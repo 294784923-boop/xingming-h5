@@ -200,9 +200,8 @@
     box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
-    background: url(project/materials/ground.png) repeat;
+    background: none;
     z-index: 185;
-    display: none;
     top: 0;
     left: 0;
     padding: 3px;
@@ -218,12 +217,13 @@
     vertical-align: middle;
     width: auto;
     height: 100%;
-    max-height: 1.6em;
+    max-height: 1.8em;
 }
 #statusBar span{
     user-select: none;
-    font: bold italic 1.1em Verdana;
+    font: bold italic 1.2em Verdana;
     display: inline;
+    color: #c8d2f0;
 }
 #statusBar p {
     user-select: none;
@@ -231,24 +231,26 @@
     vertical-align: middle;
     width: 60%;
     margin: 0;
-    color: white;
-    font: bold italic 1.1em Verdana;
+    color: #c8d2f0;
+    font: bold italic 1.2em Verdana;
     white-space: nowrap;
 }
 #toolBar {
     position: absolute;
-    background: url(project/materials/ground.png) repeat;
+    background: rgba(20,16,40,0.85);
     z-index: 210;
     box-sizing: border-box;
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
-    display: none;
-    padding: 3px;
+    padding: 4px;
+    border-top: 1px solid rgba(192,224,255,0.3);
 }
 #toolBar .tools{
     position: relative;
     display: block;
     float: left;
+    margin: 2px 4px;
+    opacity: 0.9;
 }
 
 p#hard {
@@ -506,4 +508,8 @@ p#name {
     image-rendering: pixelated;
 }
 /* 星冥线全屏裸屏: 强制隐藏原生状态栏与工具栏 (压过引擎行内样式) */
-#statusBar, #toolBar { display: none !important; }
+/* 星冥线：工具栏保留，不做强制隐藏 */
+/* 【星冥线】左侧状态栏canvas背景 */
+#statusCanvas {
+    background: url(project/materials/status_bg.png) center/cover no-repeat !important;
+}

@@ -299,6 +299,12 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.status.hero.hp -= damage;
 			core.status.hero.statistics.battleDamage += damage;
 			core.status.hero.statistics.battle++;
+			// 【RGM新增】死怪计数（怨恨特性用）
+			core.setFlag('deadMonsterCount', (core.getFlag('deadMonsterCount', 0) || 0) + 1);
+			// 【RGM新增】亡灵计数(#29): 每杀一只亡灵，最低伤害+1
+			if (core.hasSpecial(special, 29)) {
+				core.setFlag('undeadMinDamage', (core.getFlag('undeadMinDamage', 0) || 0) + 1);
+			}
 
 			// 计算当前怪物的支援怪物
 			var guards = [];
@@ -313,6 +319,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}, core.getEnemyValue(enemy, "money", x, y));
 			if (core.hasItem('coin')) money *= 2; // 幸运金币：双倍
 			if (core.hasFlag('curse')) money = 0; // 诅咒效果
+			// 【RGM新增】自尽(#45): 自杀怪无金币经验
+			if (damageInfo.suicided) { money = 0; exp = 0; }
 			core.status.hero.money += money;
 			core.status.hero.statistics.money += money;
 
@@ -358,6 +366,10 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.status.hero.def -= (enemy.defValue || 0);
 				if (core.status.hero.atk < 0) core.status.hero.atk = 0;
 				if (core.status.hero.def < 0) core.status.hero.def = 0;
+			}
+			// 【RGM新增】黑暗(#55): 战后降低视野12步，每步扣1血
+			if (core.enemys.hasSpecial(special, 55)) {
+				core.setFlag('darkSteps', (core.getFlag('darkSteps', 0) || 0) + 12);
 			}
 			// 增加仇恨值
 			core.setFlag('hatred', core.getFlag('hatred', 0) + core.values.hatred);
@@ -517,7 +529,53 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				[24, "激光", function (enemy) { return "经过怪物同行或同列时自动减生命" + (enemy.laser || 0) + "点"; }, "#dda0dd"],
 				[25, "光环", function (enemy) { return (enemy.range != null ? ((enemy.haloSquare ? "该怪物九宫格" : "该怪物十字") + enemy.haloRange + "格范围内") : "同楼层所有") + "怪物生命提升" + (enemy.hpBuff || 0) + "%，攻击提升" + (enemy.atkBuff || 0) + "%，防御提升" + (enemy.defBuff || 0) + "%，" + (enemy.haloAdd ? "可叠加" : "不可叠加"); }, "#e6e099", 1],
 				[26, "支援", "当周围一圈的怪物受到攻击时将上前支援，并组成小队战斗。", "#77c0b6", 1],
-				[27, "捕捉", function (enemy) { return "当走到怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "时会强制进行战斗。"; }, "#c0ddbb"]
+				[27, "捕捉", function (enemy) { return "当走到怪物周围" + (enemy.zoneSquare ? "九宫格" : "十字") + "时会强制进行战斗。"; }, "#c0ddbb"],
+			// === RGM新增特性 28-60 ===
+			[28, "BAKA", "第9回合冻结角色9回合（除非exp=9）", "#8833FF"],
+			[29, "亡灵", "伤害不低于下限，每击杀一只亡灵下限+1", "#A020F0"],
+			[30, "蕴血", "预扣3回合怪物输出量加到怪物生命上", "#FF4444"],
+			[31, "冥乡", "本层所有亡灵怪物攻击+1（不叠加）", "#9900CC"],
+			[32, "爆击", "第20回合附加角色防御×3的无视护盾伤害", "#FF0000"],
+			[33, "潜伏", "角色在地图上无法看到怪物", "#888888"],
+			[34, "穿透", "怪物攻击无视角色的护盾", "#FF3366"],
+			[35, "神偷", "战前血瓶效果减半并偷取金币", "#DAA520"],
+			[36, "奇迹", "场上所有怪物生命值+20（不叠加）", "#7FFFD4"],
+			[37, "伪装", "怪物手册仅显示伤害，其余属性隐藏", "#708090"],
+			[38, "遗忘", "战斗前强制扣除角色经验值", "#4B0082"],
+			[39, "往生", "战斗结束后怪物恢复原样", "#00CECB"],
+			[40, "复活", "10回合后怪物复活一次", "#32CD32"],
+			[41, "游荡", "角色靠近时怪物主动发起战斗", "#FF8C00"],
+			[42, "烈焰", "每回合附加灼烧状态", "#FF4500"],
+			[43, "虚弱", "战斗时使角色输出能力暂时降低", "#9370DB"],
+			[44, "镜像", "召唤镜像（造成20%无视护盾伤害且不被攻击）", "#00BFFF"],
+			[45, "自尽", "第10回合怪物自尽，不结算经验", "#696969"],
+			[46, "怨恨", "附加死怪数×2无视护盾伤害，战后释放一半", "#4A0E4E"],
+			[47, "沉眠", "前3回合不攻击（相当于先攻-3）", "#4682B4"],
+			[48, "冰封", "第12回合冻结自身并形成不可通行冰墙", "#E0FFFF"],
+			[49, "遗书", "击败后掉落特别遗书道具", "#D2B48C"],
+			[50, "远程", "直线4格远程攻击，靠近后退", "#1E90FF"],
+			[51, "诅咒光环", "场上每只诅咒怪角色护盾-4", "#8A2BE2"],
+			[52, "祝福光环", "场上每只祝福怪角色护盾+6", "#FFD700"],
+			[53, "风语", "战后将角色击退，撞墙受到50点伤害", "#87CEEB"],
+			[54, "护符", "无视33%的角色攻击力", "#C0C0C0"],
+			[55, "黑暗", "战后降低视野12步，每步扣1血", "#2F4F4F"],
+			[56, "幻想", "按角色攻防比例重新分配怪物自身攻防", "#E6E6FA"],
+			[57, "月诗", "根据钥匙数临时增加护盾", "#FFF8DC"],
+			[58, "绝命", "怪物生命越低伤害越高（HP<400时增伤至多300%）", "#B22222"],
+			[59, "惊梦", "第15回合角色沉眠2回合", "#191970"],
+			[60, "诀别", "使役怪物伤害+20%，但战后失去该怪物", "#DC143C"],
+			[61, "天国", "场上天国怪>3只时所有怪物防御+1", "#F0E68C"],
+			[62, "光盾", "受伤转化为回血持续3回合", "#00FFFF"],
+			[63, "无我", "不造成实际伤害但影响能量条300%", "#F5F5DC"],
+			[64, "落英", "怪物每回合自动扣除4%最大生命值", "#FFB6C1"],
+			[65, "汲水", "战斗结束后角色恢复10点生命值", "#008080"],
+			[66, "丰穧", "累计战斗16次后获得1金币", "#228B22"],
+			[67, "哀运", "累计战斗9次后所有同特性怪物获得强化", "#800000"],
+			[68, "荒芜", "战后使地图血瓶治疗效果永久-1", "#556B2F"],
+			[69, "熔火", "战后在地面形成熔火陷阱", "#FF3300"],
+			[70, "灼烧", "战后给角色叠加灼烧状态", "#FF2400"],
+			[71, "破甲(删)", "（已弃用）", "#666666"],
+			[72, "反击(删)", "（已弃用）", "#666666"]
 			];
 		},
 		"getEnemyInfo": function (enemy, hero, x, y, floorId) {
@@ -551,6 +609,37 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 坚固
 			if (core.hasSpecial(mon_special, 3) && mon_def < hero_atk - 1) {
 				mon_def = hero_atk - 1;
+			}
+			// 【RGM新增】幻想(#56): 按角色攻防比例重分配
+			if (core.hasSpecial(mon_special, 56)) {
+				var totalStat = mon_atk + mon_def;
+				var ratio = (hero_atk + hero_def) > 0 ? hero_atk / (hero_atk + hero_def) : 0.5;
+				mon_atk = Math.floor(totalStat * ratio);
+				mon_def = Math.ceil(totalStat * (1 - ratio));
+			}
+			// 【RGM新增】蕴血(#30): 预扣3回合怪物输出加到HP
+			if (core.hasSpecial(mon_special, 30)) {
+				mon_hp += Math.max(0, mon_atk - hero_def) * 3;
+			}
+			// 【RGM新增】绝命(#58): HP<400时按比例增攻
+			if (core.hasSpecial(mon_special, 58) && mon_hp < 400) {
+				mon_atk = Math.floor(mon_atk * (1 + (400 - mon_hp) / 400 * 3));
+			}
+			// 【RGM新增】冥乡(#31): 本层每只冥乡怪给亡灵(#29)+1攻
+			if (core.hasSpecial(mon_special, 29)) {
+				core.extractBlocks(floorId);
+				var undeadAtkBuff = 0;
+				var blocks = core.status.maps[floorId] && core.status.maps[floorId].blocks;
+				if (blocks) {
+					for (var i = 0; i < blocks.length; i++) {
+						var b = blocks[i];
+						if (!b.disable) {
+							var be = core.material.enemys[b.event && b.event.id];
+							if (be && core.hasSpecial(be.special, 31)) undeadAtkBuff++;
+						}
+					}
+				}
+				mon_atk += undeadAtkBuff;
 			}
 
 			var guards = [];
@@ -732,14 +821,37 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			if (core.hasSpecial(mon_special, 9))
 				init_damage += Math.floor((enemy.purify || core.values.purify) * hero_mdef);
 
+			// 【RGM新增】月诗(#57): 钥匙数临时加护盾
+			if (core.hasSpecial(mon_special, 57)) {
+				hero_mdef += 10 * (core.itemCount('yellowKey') || 0) +
+							 20 * (core.itemCount('blueKey') || 0) +
+							 30 * (core.itemCount('redKey') || 0);
+			}
+
 			// 勇士每回合对怪物造成的伤害
 			var hero_per_damage = Math.max(hero_atk - mon_def, 0);
+
+			// 【RGM新增】落英(#64): 怪物每回合自损4%最大HP
+			if (core.hasSpecial(mon_special, 64)) {
+				hero_per_damage += Math.floor(mon_hp * 0.04);
+			}
 
 			// 如果没有破防，则不可战斗
 			if (hero_per_damage <= 0) return null;
 
 			// 勇士的攻击回合数；为怪物生命除以每回合伤害向上取整
 			var turn = Math.ceil(mon_hp / hero_per_damage);
+			// 【RGM新增】自尽(#45): 超过10回合怪物自杀，回合上限=10
+			var suicided = false;
+			if (core.hasSpecial(mon_special, 45) && turn > 10) {
+				turn = 10;
+				suicided = true;
+			}
+			// 【RGM新增】沉眠(#47): 前3回合不攻击，回合数-3
+			if (core.hasSpecial(mon_special, 47)) {
+				turn = Math.max(0, turn - 3);
+				init_damage = Math.max(0, init_damage - per_damage * 3);
+			}
 
 			// ------ 支援 ----- //
 			// 这个递归最好想明白为什么，flag:__extraTurn__是怎么用的
@@ -778,6 +890,19 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 再扣去护盾
 			damage -= hero_mdef;
 
+			// 【RGM新增】穿透(#34): 怪物攻击无视护盾
+			if (core.hasSpecial(mon_special, 34)) {
+				damage += hero_mdef; // 把刚刚扣掉的护盾加回来
+			}
+			// 【RGM新增】镜像(#44): 20%无视护盾伤害
+			if (core.hasSpecial(mon_special, 44)) {
+				damage += Math.floor(mon_atk * 0.2);
+			}
+			// 【RGM新增】怨恨(#46): 死怪数×2无视护盾
+			if (core.hasSpecial(mon_special, 46)) {
+				damage += (core.getFlag('deadMonsterCount', 0) || 0) * 2;
+			}
+
 			// 检查是否允许负伤
 			if (!core.flags.enableNegativeDamage)
 				damage = Math.max(0, damage);
@@ -789,6 +914,11 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			if (core.hasSpecial(mon_special, 22)) { // 固伤
 				damage += enemy.damage || 0;
 			}
+			// 【RGM新增】亡灵(#29): 伤害不低于累计下限
+			if (core.hasSpecial(mon_special, 29)) {
+				var minDmg = core.getFlag('undeadMinDamage', 0) || 0;
+				damage = Math.max(damage, minDmg);
+			}
 
 			return {
 				"mon_hp": Math.floor(mon_hp),
@@ -798,7 +928,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				"per_damage": Math.floor(per_damage),
 				"hero_per_damage": Math.floor(hero_per_damage),
 				"turn": Math.floor(turn),
-				"damage": Math.floor(damage)
+				"damage": Math.floor(damage),
+				"suicided": suicided
 			};
 		}
 	},
@@ -1241,6 +1372,12 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.statusBar.hard.style.color = hardColor;
 				core.statusBar.hard.setAttribute('_style', hardColor);
 			}
+			// 【星冥线】水晶临时加成变色
+			var cr = core.getFlag('crystal_red',0);
+			var cb = core.getFlag('crystal_blue',0);
+			if (core.statusBar.atk) core.statusBar.atk.style.color = cr ? '#FF6666' : '';
+			if (core.statusBar.def) core.statusBar.def.style.color = cb ? '#6666FF' : '';
+			if (core.statusBar.mdef) core.statusBar.mdef.style.color = '';
 			// 自定义状态栏绘制
 			core.drawStatusBar();
 
@@ -1599,14 +1736,28 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			};
 			if (core.flags.statusCanvas) { // 系统开关「自绘状态栏」开启
 				core.ui.clearMap(ctx = core.dom.statusCanvasCtx); // 清空状态栏
+				// 【星冥线】背景图由CSS #statusCanvas 处理，避免随canvas拉伸变糊
 				core.ui.setFillStyle(ctx, core.status.globalAttribute.statusBarColor);
 				if (core.domStyle.isVertical) { // 竖屏
 					core.drawImage(ctx, core.statusBar.icons.floor, 6, 6, 25, 25);
-					fill((core.status.thisMap || {}).name || "Loading", 42, 26);
+							// 【星冥线】楼名换行显示（「」处分行：上行=塔名+楼层，下行=副标题）
+							var fn = (core.status.thisMap || {}).name || "Loading";
+							core.ui.setFont(ctx, 'bold 14px Verdana');
+							var idx = fn.indexOf('「');
+							if (idx > 0) {
+								core.ui.fillBoldText(ctx, fn.substring(0, idx), 42, 18, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+								core.ui.fillBoldText(ctx, fn.substring(idx), 42, 35, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+							} else if (fn.length > 5) {
+								core.ui.fillBoldText(ctx, fn.substring(0, 2), 42, 18, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+								core.ui.fillBoldText(ctx, fn.substring(2), 42, 35, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+							} else {
+								core.ui.fillBoldText(ctx, fn, 42, 28, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+							}
 					core.drawImage(ctx, core.statusBar.icons.hp, 137, 6, 25, 25);
 					fill(core.formatBigNumber(core.getRealStatus('hp')), 173, 26);
 					core.drawImage(ctx, core.statusBar.icons.atk, 268, 6, 25, 25);
-					fill(core.formatBigNumber(core.getRealStatus('atk')), 304, 26);
+					fill(core.formatBigNumber(core.getRealStatus('atk')), 304, 26, core.getFlag('crystal_red',0) ? '#FF6666' : undefined);
+					ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor);
 					core.drawImage(ctx, core.statusBar.icons.def, 6, 38, 25, 25);
 					fill(core.formatBigNumber(core.getRealStatus('def')), 42, 58);
 					core.drawImage(ctx, core.statusBar.icons.mdef, 137, 38, 25, 25);
@@ -1614,25 +1765,93 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					core.drawImage(ctx, core.statusBar.icons.money, 268, 38, 25, 25);
 					fill(core.formatBigNumber(core.status.hero.money), 304, 58);
 					core.drawImage(ctx, core.statusBar.icons.exp, 6, 70, 25, 25);
-					fill(core.formatBigNumber(core.status.hero.exp), 42, 90);
-				} else if (!core.flags.hideLeftStatusBar) { // 横屏且未隐藏状态栏
+							// 【星冥线】经验 cur/need 文本
+							var need = core.getNextLvUpNeed();
+							var cur = core.status.hero.exp;
+							if (need != null && need > 0) {
+								fill(cur + '/' + need, 42, 90, '#E8E8FF');
+							} else {
+								fill('MAX', 42, 90, '#FFD700');
+							}
+							// 【星冥线】钥匙（第三列，避开经验文本）
+							fill(core.setTwoDigits(core.itemCount('yellowKey')), 268, 90, '#FFCCAA');
+							fill(core.setTwoDigits(core.itemCount('blueKey')), 303, 90, '#AAAADD');
+							fill(core.setTwoDigits(core.itemCount('redKey')), 338, 90, '#FF8888');
+							// 【星冥线】使役信息（带怪物图）
+							var __shiyi_id = core.getFlag('shiyi_enemy_id', 0);
+							if (__shiyi_id > 0) {
+								var __shiyi_name = core.getFlag('shiyi_name', '???');
+								var __s = ENEMY_RMXP_STATS[__shiyi_id];
+								var __ab = __s ? Math.max(0, __s.str - 1) : 0;
+								var __db = __s ? Math.max(0, __s.dex - 1) : 0;
+								var __mb = __s ? (__s.maxsp || 0) : 0;
+								var __e = core.material.enemys['e' + __shiyi_id];
+								var __img = __e && core.material.images.images[__e.bigImage];
+								if (__img) {
+									core.drawImage(ctx, __img, 0, 0, 32, 32, 6, 100, 32, 32);
+								}
+								core.ui.setFont(ctx, 'bold 12px Verdana');
+								core.ui.fillBoldText(ctx, __shiyi_name, 42, 110, core.arrayToRGBA([200, 255, 200, 1]));
+								core.ui.fillBoldText(ctx, '+' + __ab + '/' + __db + '/' + __mb, 42, 125, core.arrayToRGBA([180, 255, 180, 1]));
+							}
+						} else if (!core.flags.hideLeftStatusBar) { // 横屏且未隐藏状态栏
 					core.drawImage(ctx, core.statusBar.icons.floor, 6, 9, 25, 25);
-					fill((core.status.thisMap || {}).name || "Loading", 42, 29);
-					core.drawImage(ctx, core.statusBar.icons.hp, 6, 43, 25, 25);
-					fill(core.formatBigNumber(core.getRealStatus('hp')), 42, 63);
-					core.drawImage(ctx, core.statusBar.icons.atk, 6, 77, 25, 25);
-					fill(core.formatBigNumber(core.getRealStatus('atk')), 42, 97);
-					core.drawImage(ctx, core.statusBar.icons.def, 6, 111, 25, 25);
-					fill(core.formatBigNumber(core.getRealStatus('def')), 42, 131);
-					core.drawImage(ctx, core.statusBar.icons.mdef, 6, 145, 25, 25);
-					fill(core.formatBigNumber(core.getRealStatus('mdef')), 42, 165);
-					core.drawImage(ctx, core.statusBar.icons.money, 6, 179, 25, 25);
-					fill(core.formatBigNumber(core.status.hero.money), 42, 199);
-					core.drawImage(ctx, core.statusBar.icons.exp, 6, 213, 25, 25);
-					fill(core.formatBigNumber(core.status.hero.exp), 42, 233);
-					fill(core.setTwoDigits(core.itemCount('yellowKey')), 11, 267, '#FFCCAA');
-					fill(core.setTwoDigits(core.itemCount('blueKey')), 46, 267, '#AAAADD');
-					fill(core.setTwoDigits(core.itemCount('redKey')), 81, 267, '#FF8888');
+							// 【星冥线】楼名换行显示（「」处分行：上行=塔名+楼层，下行=副标题）
+							var fn = (core.status.thisMap || {}).name || "Loading";
+							core.ui.setFont(ctx, 'bold 14px Verdana');
+							var idx = fn.indexOf('「');
+							if (idx > 0) {
+								core.ui.fillBoldText(ctx, fn.substring(0, idx), 42, 25, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+								core.ui.fillBoldText(ctx, fn.substring(idx), 42, 42, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+							} else if (fn.length > 5) {
+								core.ui.fillBoldText(ctx, fn.substring(0, 2), 42, 25, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+								core.ui.fillBoldText(ctx, fn.substring(2), 42, 42, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+							} else {
+								core.ui.fillBoldText(ctx, fn, 42, 34, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+							}
+					// 【星冥线】插入等级行
+					core.drawImage(ctx, core.statusBar.icons.lv || core.statusBar.icons.floor, 6, 43, 25, 25);
+					fill(core.getLvName ? core.getLvName() : ('Lv.' + core.status.hero.lv), 42, 63);
+					core.drawImage(ctx, core.statusBar.icons.hp, 6, 77, 25, 25);
+					fill(core.formatBigNumber(core.getRealStatus('hp')), 42, 97);
+					core.drawImage(ctx, core.statusBar.icons.atk, 6, 111, 25, 25);
+					fill(core.formatBigNumber(core.getRealStatus('atk')), 42, 131, core.getFlag('crystal_red',0) ? '#FF6666' : undefined);
+					core.drawImage(ctx, core.statusBar.icons.def, 6, 145, 25, 25);
+					fill(core.formatBigNumber(core.getRealStatus('def')), 42, 165, core.getFlag('crystal_blue',0) ? '#6666FF' : undefined);
+					ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor);
+					core.drawImage(ctx, core.statusBar.icons.mdef, 6, 179, 25, 25);
+					fill(core.formatBigNumber(core.getRealStatus('mdef')), 42, 199);
+					core.drawImage(ctx, core.statusBar.icons.money, 6, 213, 25, 25);
+					fill(core.formatBigNumber(core.status.hero.money), 42, 233);
+					core.drawImage(ctx, core.statusBar.icons.exp, 6, 247, 25, 25);
+							// 【星冥线】经验 cur/need 文本
+							var need = core.getNextLvUpNeed();
+							var cur = core.status.hero.exp;
+							if (need != null && need > 0) {
+								fill(cur + '/' + need, 42, 267, '#E8E8FF');
+							} else {
+								fill('MAX', 42, 267, '#FFD700');
+							}
+					fill(core.setTwoDigits(core.itemCount('yellowKey')), 11, 301, '#FFCCAA');
+					fill(core.setTwoDigits(core.itemCount('blueKey')), 46, 301, '#AAAADD');
+					fill(core.setTwoDigits(core.itemCount('redKey')), 81, 301, '#FF8888');
+					// 【星冥线】使役信息（带怪物图）
+					var __shiyi_id = core.getFlag('shiyi_enemy_id', 0);
+					if (__shiyi_id > 0) {
+						var __shiyi_name = core.getFlag('shiyi_name', '???');
+						var __s = ENEMY_RMXP_STATS[__shiyi_id];
+						var __ab = __s ? Math.max(0, __s.str - 1) : 0;
+						var __db = __s ? Math.max(0, __s.dex - 1) : 0;
+						var __mb = __s ? (__s.maxsp || 0) : 0;
+						var __e = core.material.enemys['e' + __shiyi_id];
+						var __img = __e && core.material.images.images[__e.bigImage];
+						if (__img) {
+							core.drawImage(ctx, __img, 0, 0, 32, 32, 6, 320, 32, 32);
+						}
+						core.ui.setFont(ctx, 'bold 12px Verdana');
+						core.ui.fillBoldText(ctx, __shiyi_name, 42, 335, core.arrayToRGBA([200, 255, 200, 1]));
+						core.ui.fillBoldText(ctx, '+' + __ab + '/' + __db + '/' + __mb, 42, 350, core.arrayToRGBA([180, 255, 180, 1]));
+					}
 				}
 			} else if (core.flags.hideLeftStatusBar && !core.domStyle.isVertical) { // 横屏且隐藏状态栏
 				// 【东方星冥线】不用引擎悬浮面板，自研迷你HUD顶替

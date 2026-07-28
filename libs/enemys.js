@@ -182,6 +182,11 @@ enemys.prototype.getEnemyValue = function (enemy, name, x, y, floorId) {
 ////// 能否获胜 //////
 enemys.prototype.canBattle = function (enemy, x, y, floorId) {
     if (typeof enemy == 'string') enemy = core.material.enemys[enemy];
+    // NPC怪物对话补丁：有events的位置允许通过（实际为对话NPC，非真战斗）
+    if (x != null && y != null && core.status.floorId) {
+        var floor = core.floors[core.status.floorId];
+        if (floor && floor.events && floor.events[x+","+y]) return true;
+    }
     var damage = this.getDamage(enemy, x, y, floorId);
     return damage != null && damage < core.status.hero.hp;
 }

@@ -1,10 +1,573 @@
+// RMXP enemy str/dex/maxsp for 使役 (Baby_Buff)
+// RMXP enemy str/dex/maxsp lookup for 使役系统
+var ENEMY_RMXP_STATS = {
+  1: {str:1, dex:1, maxsp:1},
+  2: {str:1, dex:1, maxsp:2},
+  3: {str:1, dex:1, maxsp:2},
+  4: {str:50, dex:50, maxsp:500},
+  5: {str:50, dex:50, maxsp:500},
+  6: {str:50, dex:50, maxsp:500},
+  7: {str:50, dex:50, maxsp:500},
+  8: {str:50, dex:50, maxsp:500},
+  9: {str:50, dex:50, maxsp:500},
+  10: {str:1, dex:1, maxsp:2},
+  11: {str:50, dex:50, maxsp:500},
+  12: {str:1, dex:1, maxsp:18},
+  13: {str:1, dex:1, maxsp:26},
+  14: {str:1, dex:1, maxsp:34},
+  15: {str:50, dex:50, maxsp:500},
+  16: {str:50, dex:50, maxsp:500},
+  17: {str:50, dex:50, maxsp:500},
+  18: {str:50, dex:50, maxsp:500},
+  19: {str:50, dex:50, maxsp:500},
+  20: {str:50, dex:50, maxsp:500},
+  21: {str:50, dex:50, maxsp:500},
+  22: {str:1, dex:1, maxsp:11},
+  23: {str:50, dex:50, maxsp:500},
+  24: {str:50, dex:50, maxsp:500},
+  25: {str:50, dex:50, maxsp:500},
+  26: {str:50, dex:50, maxsp:500},
+  27: {str:50, dex:50, maxsp:500},
+  28: {str:50, dex:50, maxsp:500},
+  29: {str:50, dex:50, maxsp:500},
+  30: {str:2, dex:1, maxsp:16},
+  31: {str:50, dex:50, maxsp:500},
+  32: {str:50, dex:50, maxsp:500},
+  33: {str:50, dex:50, maxsp:500},
+  34: {str:50, dex:50, maxsp:500},
+  35: {str:50, dex:50, maxsp:500},
+  36: {str:50, dex:50, maxsp:500},
+  37: {str:50, dex:50, maxsp:500},
+  38: {str:50, dex:50, maxsp:500},
+  39: {str:50, dex:50, maxsp:500},
+  40: {str:50, dex:50, maxsp:500},
+  41: {str:50, dex:50, maxsp:500},
+  42: {str:50, dex:50, maxsp:500},
+  43: {str:50, dex:50, maxsp:500},
+  44: {str:50, dex:50, maxsp:500},
+  45: {str:50, dex:50, maxsp:500},
+  46: {str:1, dex:1, maxsp:45},
+  47: {str:50, dex:50, maxsp:500},
+  48: {str:1, dex:1, maxsp:2},
+  49: {str:2, dex:1, maxsp:4},
+  50: {str:50, dex:50, maxsp:500},
+  51: {str:50, dex:50, maxsp:500},
+  52: {str:50, dex:50, maxsp:500},
+  53: {str:50, dex:50, maxsp:500},
+  54: {str:50, dex:50, maxsp:500},
+  55: {str:50, dex:50, maxsp:500},
+  56: {str:50, dex:50, maxsp:500},
+  57: {str:50, dex:50, maxsp:500},
+  58: {str:50, dex:50, maxsp:500},
+  59: {str:50, dex:50, maxsp:500},
+  60: {str:50, dex:50, maxsp:500},
+  61: {str:50, dex:50, maxsp:500},
+  62: {str:50, dex:50, maxsp:500},
+  63: {str:50, dex:50, maxsp:10},
+  64: {str:50, dex:50, maxsp:500},
+  65: {str:50, dex:50, maxsp:500},
+  66: {str:3, dex:2, maxsp:20},
+  67: {str:50, dex:50, maxsp:500},
+  68: {str:2, dex:2, maxsp:42},
+  69: {str:50, dex:50, maxsp:500},
+  70: {str:50, dex:50, maxsp:10},
+  71: {str:50, dex:50, maxsp:500},
+  72: {str:50, dex:50, maxsp:500},
+  73: {str:50, dex:50, maxsp:500},
+  74: {str:50, dex:50, maxsp:500},
+  75: {str:50, dex:50, maxsp:500},
+  76: {str:50, dex:50, maxsp:500},
+  77: {str:50, dex:50, maxsp:500},
+  78: {str:50, dex:50, maxsp:500},
+  79: {str:50, dex:50, maxsp:500},
+  80: {str:50, dex:50, maxsp:500},
+  81: {str:50, dex:50, maxsp:500},
+  82: {str:50, dex:50, maxsp:500},
+  83: {str:50, dex:50, maxsp:500},
+  84: {str:1, dex:1, maxsp:7},
+  85: {str:2, dex:1, maxsp:1},
+  86: {str:2, dex:1, maxsp:0},
+  87: {str:2, dex:1, maxsp:2},
+  88: {str:50, dex:50, maxsp:500},
+  89: {str:50, dex:50, maxsp:500},
+  90: {str:50, dex:50, maxsp:500},
+  91: {str:50, dex:50, maxsp:500},
+  92: {str:50, dex:50, maxsp:500},
+  93: {str:50, dex:50, maxsp:500},
+  94: {str:50, dex:50, maxsp:500},
+  95: {str:50, dex:50, maxsp:500},
+  96: {str:50, dex:50, maxsp:500},
+  97: {str:50, dex:50, maxsp:500},
+  98: {str:50, dex:50, maxsp:500},
+  99: {str:50, dex:50, maxsp:500},
+  100: {str:50, dex:50, maxsp:500},
+  101: {str:50, dex:50, maxsp:500},
+  102: {str:50, dex:50, maxsp:500},
+  103: {str:50, dex:50, maxsp:500},
+  104: {str:50, dex:50, maxsp:500},
+  105: {str:50, dex:50, maxsp:500},
+  106: {str:50, dex:50, maxsp:500},
+  107: {str:4, dex:1, maxsp:19},
+  108: {str:50, dex:50, maxsp:500},
+  109: {str:50, dex:50, maxsp:500},
+  110: {str:50, dex:50, maxsp:500},
+  111: {str:50, dex:50, maxsp:500},
+  112: {str:50, dex:50, maxsp:500},
+  113: {str:50, dex:50, maxsp:500},
+  114: {str:50, dex:50, maxsp:500},
+  115: {str:50, dex:50, maxsp:500},
+  116: {str:50, dex:50, maxsp:500},
+  117: {str:50, dex:50, maxsp:500},
+  118: {str:50, dex:50, maxsp:500},
+  119: {str:50, dex:50, maxsp:500},
+  120: {str:1, dex:1, maxsp:0},
+  121: {str:50, dex:50, maxsp:500},
+  122: {str:50, dex:50, maxsp:500},
+  123: {str:50, dex:50, maxsp:500},
+  124: {str:50, dex:50, maxsp:500},
+  125: {str:50, dex:50, maxsp:500},
+  126: {str:1, dex:1, maxsp:8},
+  127: {str:1, dex:2, maxsp:18},
+  128: {str:1, dex:2, maxsp:2},
+  129: {str:50, dex:50, maxsp:500},
+  130: {str:50, dex:50, maxsp:500},
+  131: {str:50, dex:50, maxsp:500},
+  132: {str:50, dex:50, maxsp:500},
+  133: {str:50, dex:50, maxsp:500},
+  134: {str:50, dex:50, maxsp:500},
+  135: {str:50, dex:50, maxsp:500},
+  136: {str:50, dex:50, maxsp:500},
+  137: {str:50, dex:50, maxsp:500},
+  138: {str:50, dex:50, maxsp:500},
+  139: {str:50, dex:50, maxsp:500},
+  140: {str:50, dex:50, maxsp:500},
+  141: {str:50, dex:50, maxsp:500},
+  142: {str:50, dex:50, maxsp:500},
+  143: {str:50, dex:50, maxsp:500},
+  144: {str:50, dex:50, maxsp:500},
+  145: {str:50, dex:50, maxsp:500},
+  146: {str:2, dex:1, maxsp:9},
+  147: {str:50, dex:50, maxsp:500},
+  148: {str:50, dex:50, maxsp:500},
+  149: {str:50, dex:50, maxsp:500},
+  150: {str:50, dex:50, maxsp:500},
+  151: {str:2, dex:1, maxsp:5},
+  152: {str:50, dex:50, maxsp:500},
+  153: {str:50, dex:50, maxsp:500},
+  154: {str:50, dex:50, maxsp:500},
+  155: {str:50, dex:50, maxsp:500},
+  156: {str:50, dex:50, maxsp:500},
+  157: {str:50, dex:50, maxsp:500},
+  158: {str:1, dex:1, maxsp:10},
+  159: {str:2, dex:1, maxsp:3},
+  160: {str:1, dex:2, maxsp:14},
+  161: {str:1, dex:2, maxsp:34},
+  162: {str:1, dex:3, maxsp:31},
+  163: {str:2, dex:1, maxsp:1},
+  164: {str:1, dex:1, maxsp:26},
+  165: {str:50, dex:50, maxsp:500},
+  166: {str:50, dex:50, maxsp:500},
+  167: {str:3, dex:1, maxsp:13},
+  168: {str:2, dex:2, maxsp:7},
+  169: {str:50, dex:50, maxsp:500},
+  170: {str:50, dex:50, maxsp:500},
+  171: {str:2, dex:2, maxsp:95},
+  172: {str:50, dex:50, maxsp:500},
+  173: {str:50, dex:50, maxsp:500},
+  174: {str:50, dex:50, maxsp:500},
+  175: {str:50, dex:50, maxsp:500},
+  176: {str:50, dex:50, maxsp:500},
+  177: {str:50, dex:50, maxsp:500},
+  178: {str:50, dex:50, maxsp:500},
+  179: {str:50, dex:50, maxsp:500},
+  180: {str:50, dex:50, maxsp:500},
+  181: {str:50, dex:50, maxsp:500},
+  182: {str:50, dex:50, maxsp:500},
+  183: {str:50, dex:50, maxsp:500},
+  184: {str:50, dex:50, maxsp:500},
+  185: {str:50, dex:50, maxsp:500},
+  186: {str:50, dex:50, maxsp:500},
+  187: {str:50, dex:50, maxsp:500},
+  188: {str:50, dex:50, maxsp:500},
+  189: {str:50, dex:50, maxsp:500},
+  190: {str:3, dex:1, maxsp:8},
+  191: {str:50, dex:50, maxsp:500},
+  192: {str:50, dex:50, maxsp:500},
+  193: {str:50, dex:50, maxsp:500},
+  194: {str:50, dex:50, maxsp:500},
+  195: {str:50, dex:50, maxsp:500},
+  196: {str:50, dex:50, maxsp:500},
+  197: {str:1, dex:1, maxsp:16},
+  198: {str:50, dex:50, maxsp:500},
+  199: {str:50, dex:50, maxsp:500},
+  200: {str:50, dex:50, maxsp:500},
+  201: {str:50, dex:50, maxsp:500},
+  202: {str:50, dex:50, maxsp:500},
+  203: {str:50, dex:50, maxsp:500},
+  204: {str:50, dex:50, maxsp:500},
+  205: {str:50, dex:50, maxsp:500},
+  206: {str:50, dex:50, maxsp:500},
+  207: {str:50, dex:50, maxsp:500},
+  208: {str:50, dex:50, maxsp:500},
+  209: {str:50, dex:50, maxsp:500},
+  210: {str:50, dex:50, maxsp:500},
+  211: {str:50, dex:50, maxsp:500},
+  212: {str:50, dex:50, maxsp:500},
+  213: {str:50, dex:50, maxsp:500},
+  214: {str:50, dex:50, maxsp:500},
+  215: {str:50, dex:50, maxsp:500},
+  216: {str:50, dex:50, maxsp:500},
+  217: {str:50, dex:50, maxsp:500},
+  218: {str:50, dex:50, maxsp:500},
+  219: {str:50, dex:50, maxsp:500},
+  220: {str:50, dex:50, maxsp:500},
+  221: {str:50, dex:50, maxsp:500},
+  222: {str:2, dex:3, maxsp:34},
+  223: {str:4, dex:1, maxsp:6},
+  224: {str:4, dex:1, maxsp:8},
+  225: {str:50, dex:50, maxsp:500},
+  226: {str:50, dex:50, maxsp:500},
+  227: {str:50, dex:50, maxsp:500},
+  228: {str:50, dex:50, maxsp:500},
+  229: {str:50, dex:50, maxsp:500},
+  230: {str:50, dex:50, maxsp:500},
+  231: {str:50, dex:50, maxsp:500},
+  232: {str:50, dex:50, maxsp:500},
+  233: {str:50, dex:50, maxsp:500},
+  234: {str:50, dex:50, maxsp:500},
+  235: {str:50, dex:50, maxsp:500},
+  236: {str:50, dex:50, maxsp:500},
+  237: {str:50, dex:50, maxsp:500},
+  238: {str:50, dex:50, maxsp:500},
+  239: {str:50, dex:50, maxsp:500},
+  240: {str:50, dex:50, maxsp:500},
+  241: {str:50, dex:50, maxsp:500},
+  242: {str:50, dex:50, maxsp:500},
+  243: {str:50, dex:50, maxsp:500},
+  244: {str:50, dex:50, maxsp:500},
+  245: {str:50, dex:50, maxsp:500},
+  246: {str:50, dex:50, maxsp:500},
+  247: {str:50, dex:50, maxsp:500},
+  248: {str:50, dex:50, maxsp:500},
+  249: {str:50, dex:50, maxsp:500},
+  250: {str:2, dex:2, maxsp:48},
+  251: {str:50, dex:50, maxsp:500},
+  252: {str:50, dex:50, maxsp:500},
+  253: {str:2, dex:2, maxsp:46},
+  254: {str:50, dex:50, maxsp:500},
+  255: {str:50, dex:50, maxsp:500},
+  256: {str:50, dex:50, maxsp:500},
+  257: {str:50, dex:50, maxsp:500},
+  258: {str:50, dex:50, maxsp:500},
+  259: {str:50, dex:50, maxsp:500},
+  260: {str:50, dex:50, maxsp:500},
+  261: {str:50, dex:50, maxsp:500},
+  262: {str:50, dex:50, maxsp:500},
+  263: {str:50, dex:50, maxsp:500},
+  264: {str:50, dex:50, maxsp:500},
+  265: {str:3, dex:2, maxsp:13},
+  266: {str:50, dex:50, maxsp:500},
+  267: {str:50, dex:50, maxsp:500},
+  268: {str:50, dex:50, maxsp:500},
+  269: {str:50, dex:50, maxsp:500},
+  270: {str:50, dex:50, maxsp:500},
+  271: {str:50, dex:50, maxsp:500},
+  272: {str:50, dex:50, maxsp:500},
+  273: {str:50, dex:50, maxsp:500},
+  274: {str:50, dex:50, maxsp:500},
+  275: {str:50, dex:50, maxsp:500},
+  276: {str:50, dex:50, maxsp:500},
+  277: {str:50, dex:50, maxsp:500},
+  278: {str:50, dex:50, maxsp:500},
+  279: {str:50, dex:50, maxsp:500},
+  280: {str:50, dex:50, maxsp:500},
+  281: {str:50, dex:50, maxsp:500},
+  282: {str:50, dex:50, maxsp:500},
+  283: {str:50, dex:50, maxsp:500},
+  284: {str:50, dex:50, maxsp:500},
+  285: {str:50, dex:50, maxsp:500},
+  286: {str:50, dex:50, maxsp:500},
+  287: {str:50, dex:50, maxsp:500},
+  288: {str:50, dex:50, maxsp:500},
+  289: {str:50, dex:50, maxsp:500},
+  290: {str:50, dex:50, maxsp:500},
+  291: {str:50, dex:50, maxsp:500},
+  292: {str:50, dex:50, maxsp:500},
+  293: {str:50, dex:50, maxsp:500},
+  294: {str:50, dex:50, maxsp:500},
+  295: {str:50, dex:50, maxsp:500},
+  296: {str:50, dex:50, maxsp:500},
+  297: {str:50, dex:50, maxsp:500},
+  298: {str:50, dex:50, maxsp:500},
+  299: {str:50, dex:50, maxsp:500},
+  300: {str:50, dex:50, maxsp:500},
+  301: {str:50, dex:50, maxsp:500},
+  302: {str:50, dex:50, maxsp:500},
+  303: {str:50, dex:50, maxsp:500},
+  304: {str:1, dex:1, maxsp:12},
+  305: {str:50, dex:50, maxsp:500},
+  306: {str:50, dex:50, maxsp:500},
+  307: {str:50, dex:50, maxsp:500},
+  308: {str:50, dex:50, maxsp:500},
+  309: {str:50, dex:50, maxsp:500},
+  310: {str:50, dex:50, maxsp:500},
+  311: {str:50, dex:50, maxsp:500},
+  312: {str:50, dex:50, maxsp:500},
+  313: {str:50, dex:50, maxsp:500},
+  314: {str:1, dex:2, maxsp:56},
+  315: {str:50, dex:50, maxsp:500},
+  316: {str:50, dex:50, maxsp:500},
+  317: {str:50, dex:50, maxsp:500},
+  318: {str:2, dex:2, maxsp:84},
+  319: {str:50, dex:50, maxsp:500},
+  320: {str:50, dex:50, maxsp:500},
+  321: {str:50, dex:50, maxsp:500},
+  322: {str:1, dex:4, maxsp:65},
+  323: {str:50, dex:50, maxsp:500},
+  324: {str:50, dex:50, maxsp:500},
+  325: {str:1, dex:1, maxsp:10},
+  326: {str:50, dex:50, maxsp:500},
+  327: {str:50, dex:50, maxsp:500},
+  328: {str:50, dex:50, maxsp:500},
+  329: {str:50, dex:50, maxsp:500},
+  330: {str:50, dex:50, maxsp:500},
+  331: {str:50, dex:50, maxsp:500},
+  332: {str:50, dex:50, maxsp:500},
+  333: {str:50, dex:50, maxsp:500},
+  334: {str:50, dex:50, maxsp:500},
+  335: {str:50, dex:50, maxsp:500},
+  336: {str:50, dex:50, maxsp:500},
+  337: {str:50, dex:50, maxsp:500},
+  338: {str:50, dex:50, maxsp:500},
+  339: {str:50, dex:50, maxsp:500},
+  340: {str:50, dex:50, maxsp:500},
+  341: {str:50, dex:50, maxsp:500},
+  342: {str:50, dex:50, maxsp:500},
+  343: {str:50, dex:50, maxsp:500},
+  344: {str:50, dex:50, maxsp:500},
+  345: {str:50, dex:50, maxsp:500},
+  346: {str:50, dex:50, maxsp:500},
+  347: {str:50, dex:50, maxsp:500},
+  348: {str:50, dex:50, maxsp:500},
+  349: {str:50, dex:50, maxsp:500},
+  350: {str:50, dex:50, maxsp:500},
+  351: {str:50, dex:50, maxsp:500},
+  352: {str:50, dex:50, maxsp:500},
+  353: {str:50, dex:50, maxsp:500},
+  354: {str:50, dex:50, maxsp:500},
+  355: {str:50, dex:50, maxsp:500},
+  356: {str:50, dex:50, maxsp:500},
+  357: {str:50, dex:50, maxsp:500},
+  358: {str:50, dex:50, maxsp:500},
+  359: {str:50, dex:50, maxsp:500},
+  360: {str:50, dex:50, maxsp:500},
+  361: {str:50, dex:50, maxsp:500},
+  362: {str:50, dex:50, maxsp:500},
+  363: {str:50, dex:50, maxsp:500},
+  364: {str:50, dex:50, maxsp:500},
+  365: {str:50, dex:50, maxsp:500},
+  366: {str:50, dex:50, maxsp:500},
+  367: {str:50, dex:50, maxsp:500},
+  368: {str:50, dex:50, maxsp:500},
+  369: {str:50, dex:50, maxsp:500},
+  370: {str:50, dex:50, maxsp:500},
+  371: {str:50, dex:50, maxsp:500},
+  372: {str:50, dex:50, maxsp:500},
+  373: {str:50, dex:50, maxsp:500},
+  374: {str:50, dex:50, maxsp:500},
+  375: {str:50, dex:50, maxsp:500},
+  376: {str:50, dex:50, maxsp:500},
+  377: {str:50, dex:50, maxsp:500},
+  378: {str:50, dex:50, maxsp:500},
+  379: {str:50, dex:50, maxsp:500},
+  380: {str:50, dex:50, maxsp:500},
+  381: {str:50, dex:50, maxsp:500},
+  382: {str:50, dex:50, maxsp:500},
+  383: {str:50, dex:50, maxsp:500},
+  384: {str:50, dex:50, maxsp:500},
+  385: {str:50, dex:50, maxsp:500},
+  386: {str:50, dex:50, maxsp:500},
+  387: {str:50, dex:50, maxsp:500},
+  388: {str:50, dex:50, maxsp:500},
+  389: {str:50, dex:50, maxsp:500},
+  390: {str:50, dex:50, maxsp:500},
+  391: {str:50, dex:50, maxsp:500},
+  392: {str:50, dex:50, maxsp:500},
+  393: {str:50, dex:50, maxsp:500},
+  394: {str:50, dex:50, maxsp:500},
+  395: {str:50, dex:50, maxsp:500},
+  396: {str:50, dex:50, maxsp:500},
+  397: {str:50, dex:50, maxsp:500},
+  398: {str:50, dex:50, maxsp:500},
+  399: {str:50, dex:50, maxsp:500},
+  400: {str:50, dex:50, maxsp:500},
+  401: {str:1, dex:1, maxsp:0},
+  402: {str:50, dex:50, maxsp:500},
+  403: {str:1, dex:1, maxsp:0},
+  404: {str:50, dex:50, maxsp:500},
+  405: {str:50, dex:50, maxsp:500},
+  406: {str:50, dex:50, maxsp:500},
+  407: {str:50, dex:50, maxsp:500},
+  408: {str:50, dex:50, maxsp:500},
+  409: {str:50, dex:50, maxsp:500},
+  410: {str:50, dex:50, maxsp:500},
+  411: {str:50, dex:50, maxsp:500},
+  412: {str:50, dex:50, maxsp:500},
+  413: {str:50, dex:50, maxsp:500},
+  414: {str:50, dex:50, maxsp:500},
+  415: {str:50, dex:50, maxsp:500},
+  416: {str:50, dex:50, maxsp:500},
+  417: {str:50, dex:50, maxsp:500},
+  418: {str:50, dex:50, maxsp:500},
+  419: {str:50, dex:50, maxsp:500},
+  420: {str:50, dex:50, maxsp:500},
+  421: {str:50, dex:50, maxsp:500},
+  422: {str:50, dex:50, maxsp:500},
+  423: {str:50, dex:50, maxsp:500},
+  424: {str:50, dex:50, maxsp:500},
+  425: {str:50, dex:50, maxsp:500},
+  426: {str:50, dex:50, maxsp:500},
+  427: {str:50, dex:50, maxsp:500},
+  428: {str:50, dex:50, maxsp:500},
+  429: {str:50, dex:50, maxsp:500},
+  430: {str:50, dex:50, maxsp:500},
+  431: {str:50, dex:50, maxsp:500},
+  432: {str:50, dex:50, maxsp:500},
+  433: {str:50, dex:50, maxsp:500},
+  434: {str:50, dex:50, maxsp:500},
+  435: {str:50, dex:50, maxsp:500},
+  436: {str:50, dex:50, maxsp:500},
+  437: {str:1, dex:1, maxsp:1},
+  438: {str:3, dex:1, maxsp:12},
+  439: {str:1, dex:3, maxsp:8},
+  440: {str:1, dex:1, maxsp:25},
+  441: {str:1, dex:1, maxsp:6},
+  442: {str:1, dex:1, maxsp:8},
+  443: {str:1, dex:3, maxsp:83},
+  444: {str:50, dex:50, maxsp:500},
+  445: {str:2, dex:2, maxsp:22},
+  446: {str:2, dex:2, maxsp:18},
+  447: {str:3, dex:1, maxsp:2},
+  448: {str:2, dex:1, maxsp:12},
+  449: {str:3, dex:1, maxsp:4},
+  450: {str:3, dex:1, maxsp:17},
+};
 ///<reference path='../runtime.d.ts'/>
 var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 {
 	"init": function () {
 		this._afterLoadResources = function () {
 			// 本函数将在所有资源加载完毕后，游戏开启前被执行
+			// 【东方星冥线】补全引擎缺失的块操作别名（core.xxx → core.maps.xxx）
+			if (!core.moveBlock) core.moveBlock = core.maps.moveBlock.bind(core.maps);
+			// 【东方星冥线】使役系统 (Baby_Buff)
+			// 存储使役敌人ID
+			core.setFlag('shiyi_enemy_id', 0);
+			// 覆写 getRealStatus: atk/def 叠加使役加成
+			// 使役+水晶 buff 注入 getRealStatusOrDefault（战斗和面板共用）
+			var __grsd = core.getRealStatusOrDefault;
+			core.getRealStatusOrDefault = function(status, name) {
+				var val = __grsd.call(this, status, name);
+				var eid = core.getFlag('shiyi_enemy_id', 0);
+				if (eid && ENEMY_RMXP_STATS && ENEMY_RMXP_STATS[eid]) {
+					var s = ENEMY_RMXP_STATS[eid];
+					if (name === 'atk') val += Math.max(0, s.str - 1);
+					if (name === 'def') val += Math.max(0, s.dex - 1);
+					if (name === 'mdef') val += (s.maxsp || 0);
+				}
+
+				return val;
+			};
+			// 使役捕获：core.captureShiyi(enemyId)
+			core.captureShiyi = function(enemyId) {
+				var enemy = core.material.enemys['e' + enemyId] || core.material.enemys[enemyId];
+				if (!enemy) return false;
+				core.setFlag('shiyi_enemy_id', enemyId);
+				core.setFlag('shiyi_name', enemy.name || '???');
+				core.updateStatusBar();
+				var stats = ENEMY_RMXP_STATS[enemyId];
+				var atkB = stats ? Math.max(0, stats.str - 1) : 0;
+				var defB = stats ? Math.max(0, stats.dex - 1) : 0;
+				core.drawTip('成功使役 ' + (enemy.name || '???') + ' (atk+' + atkB + ' def+' + defB + ')');
+				return true;
+			};
+
+			// 使役释放
+			core.releaseShiyi = function() {
+				core.setFlag('shiyi_enemy_id', 0);
+				core.setFlag('shiyi_name', '');
+				core.updateStatusBar();
+				core.drawTip('使役已释放');
+			};
+			// 战斗后自动捕获（捕获模式开启时）+ 清除水晶buff
+			// 【星冥线】RMXP 式升级系统 (CE23)
+
+
+			core.checkLevelUp = function() {
+				var threshold = core.getFlag('expThreshold', 0);
+				if (!threshold) { threshold = 20; core.setFlag('expThreshold', 20); }
+				if (!core.status.hero || core.status.hero.exp < threshold) return;
+				var hero = core.status.hero;
+				hero.exp -= threshold;
+				hero.lv = (hero.lv || 1) + 1;
+				var hpGain = hero.lv * 10 + 140;
+				hero.hp += hpGain;
+				core.setFlag('expThreshold', threshold + 8);
+				var lvMsg = "升级至" + hero.lv + "级，HP +" + hpGain + "! 请选择：";
+				core.insertAction([
+					{type: "choices", text: lvMsg, choices: [
+						{text: "增加1点攻击", action: [{type: "function", function: "function(){core.addStatus('atk',1);core.checkLevelUp();}"}]},
+						{text: "增加1点防御", action: [{type: "function", function: "function(){core.addStatus('def',1);core.checkLevelUp();}"}]}
+					]}
+				]);
+			};
+
+			var __nextLv = core.getNextLvUpNeed;
+			core.getNextLvUpNeed = function() { return core.getFlag('expThreshold', 20); };
+
+			var __afterBattle = core.events.afterBattle;
+			core.events.afterBattle = function(enemy, x, y, callback) {
+				if (core.getFlag('crystal_red',0)) { core.removeFlag('crystal_red'); core.addStatus('atk', -1); }
+				if (core.getFlag('crystal_blue',0)) { core.removeFlag('crystal_blue'); core.addStatus('def', -1); }
+				if (core.getFlag('shiyi_mode', 0) && enemy) {
+					var eid = enemy.id || enemy;
+					var numId = typeof eid == 'string' ? parseInt(eid.replace(/[^0-9]/g, '')) : eid;
+					if (numId > 0) core.captureShiyi(numId);
+				}
+				if (__afterBattle) __afterBattle.call(this, enemy, x, y, callback);
+				core.checkLevelUp();
+			};
+
 		}
+		// 【星冥线】手册每页5只怪，间距拉大
+			var __pageinfo = core.ui._drawBook_pageinfo;
+			core.ui._drawBook_pageinfo = function() {
+				var info = __pageinfo.call(this);
+				info.per_page = 5;
+				info.per_height = (core._PY_ - 32 - info.padding_top) / info.per_page;
+				return info;
+			};
+
+		// 【星冥线】怪物手册使役信息
+			var __drawBookContent = core.ui._drawBook_drawContent;
+			core.ui._drawBook_drawContent = function(index, enemy, top, left) {
+				__drawBookContent.call(this, index, enemy, top, left);
+				var eid = enemy.id;
+				if (typeof eid == 'string') eid = parseInt(eid.replace(/[^0-9]/g, ''));
+				var s = ENEMY_RMXP_STATS && ENEMY_RMXP_STATS[eid];
+				if (!s) return;
+				var ab = Math.max(0, s.str - 1);
+				var db = Math.max(0, s.dex - 1);
+				var mb = s.maxsp || 0;
+				if (ab == 0 && db == 0 && mb == 0) return;
+				var col1 = left, col2 = left + (core._PX_ - left) * 9 / 25, col3 = left + (core._PX_ - left) * 17 / 25;
+				var pos = top + 74;
+				var f12 = core.ui._buildFont(12, false);
+				core.fillText('ui', '力+' + ab, col1, pos, '#FFCC88', f12);
+				core.fillText('ui', '巧+' + db, col2, pos, '#88CCFF', f12);
+				core.fillText('ui', '魔+' + mb, col3, pos, '#CC88FF', f12);
+			};
+
 		// 【东方星冥线】禁用双击瞬移（保留行走中重新指定目标）
 		control.prototype._setAutomaticRoute_isMoving = function (destX, destY) {
 			if (core.status.automaticRoute.autoHeroMove) {
@@ -36,8 +599,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				var imgH = pano.height * psc;
 				var offY = (Date.now() / 1000 * PANO_SPEED_Y) % imgH;
 				// 向上滚动: 窗口在整幅高图上滑动, 按图高 wrap
+				panoCv.globalAlpha = 0.5;
 				panoCv.drawImage(pano, 0, 0, pano.width, pano.height, 0, -offY, w, imgH);
 				panoCv.drawImage(pano, 0, 0, pano.width, pano.height, 0, imgH - offY, w, imgH);
+				panoCv.globalAlpha = 1;
 			}
 			// --- 雾层 (blocks之上, damage/动画之下: DOM插到#damage前) ---
 			if (!fogCv) {
@@ -63,6 +628,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				for (var y = -offY2; y < h; y += H)
 					fogCv.drawImage(fog, 0, 0, fog.width, fog.height, x, y, W, H);
 			fogCv.globalAlpha = 1;
+			// --- 使役捕获光环 ---
+			var haloImg = core.material.images.images['shiyi.png'];
+			if (core.getFlag('shiyi_mode', 0) && haloImg) {
+				if (!core.dymCanvas.shiyiHalo) {
+					core.createCanvas('shiyiHalo', 0, 0, core._PX_, core._PY_, 35);
+				}
+				var hc = core.dymCanvas.shiyiHalo;
+				hc.clearRect(0, 0, core._PX_, core._PY_);
+				var hx = core.getHeroLoc('x'), hy = core.getHeroLoc('y');
+				var ox = core.bigmap.offsetX, oy = core.bigmap.offsetY;
+				hc.drawImage(haloImg, hx * 32 - ox - 32, hy * 32 - oy - 32);
+			} else if (core.dymCanvas.shiyiHalo) {
+				core.dymCanvas.shiyiHalo.clearRect(0, 0, core._PX_, core._PY_);
+			}
 		}
 		// 【东方星冥线】满屏适配: 任意浮点倍率铺满窗口 (参照七曜旅人竖屏公式, 黑边最小化)
 		control.prototype.resize = function () {
@@ -72,7 +651,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			var extendToolbar = core.flags.extendToolbar;
 			let hideLeftStatusBar = core.flags.hideLeftStatusBar;
 			var BAR_WIDTH = hideLeftStatusBar ? 0 : Math.round(core._PY_ * 0.31);
-			var horizontalMaxRatio = (clientHeight - 2 * BORDER - (hideLeftStatusBar ? BORDER : 0)) / (core._PY_ + (hideLeftStatusBar ? 0 : 0));
+			var horizontalMaxRatio = (clientHeight - 2 * BORDER - (hideLeftStatusBar ? BORDER : 0) - (extendToolbar ? BORDER : 0)) / (core._PY_ + (extendToolbar ? 38 : 0) + (hideLeftStatusBar ? 0 : 0));
 			if (clientWidth - 3 * BORDER >= core._PX_ + BAR_WIDTH || (clientWidth > clientHeight && horizontalMaxRatio < 1)) {
 				// 横屏: 浮点倍率, 取宽/高较小者铺满
 				core.domStyle.isVertical = false;
@@ -339,11 +918,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		var SYS = 'rgba(192,224,255,0.85)', WHITE = 'rgb(255,255,255)';
 		var hudCv = null, hudCtx = null, btnCv = null, btnCtx = null, lastHp = null;
 		var BR = 15;
-		var BTNS = [
-			{ g: '\u9053', fn: function () { if (core.isPlaying()) core.openToolbox(true); } },
-			{ g: '\u5b58', fn: function () { if (core.isPlaying()) core.save(true); } },
-			{ g: '\u8bbe', fn: function () { if (core.isPlaying()) core.openSettings(true); } }
-		];
+		var BTNS = []; // 按钮已移到底部工具栏
 		function pill(c, x, y, w, h, text, fillColor, ratio) {
 			c.fillStyle = 'rgba(20,16,40,0.72)';
 			c.fillRect(x, y, w, h);
@@ -390,19 +965,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				hudCv.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:135;pointer-events:none;';
 				gd.appendChild(hudCv);
 				hudCtx = hudCv.getContext('2d');
-				btnCv = document.createElement('canvas');
-				btnCv.id = 'hudBtns';
-				btnCv.width = 128; btnCv.height = 40;
-				btnCv.style.cssText = 'position:absolute;right:2px;bottom:2px;width:30.77%;height:9.62%;z-index:200;';
-				gd.appendChild(btnCv);
-				btnCtx = btnCv.getContext('2d');
-				btnCv.addEventListener('mousedown', onBtn);
-				btnCv.addEventListener('mousemove', onMove);
-			}
+				}
 			var playing = core.isPlaying() && core.status && core.status.hero;
 			hudCv.style.display = playing ? 'block' : 'none';
-			btnCv.style.display = playing ? 'block' : 'none';
-			if (!playing) { lastHp = null; return; }
+		if (!playing) { lastHp = null; return; }
 			var hero = core.status.hero;
 			// 魔塔能量统计 (沿用原HUD逻辑: 进塔设上限3000, 按掉血消耗)
 			var fid = core.status.floorId || '';
@@ -414,27 +980,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (hudCv.width !== PX) { hudCv.width = PX; hudCv.height = PY; }
 			var c = hudCtx;
 			c.clearRect(0, 0, PX, PY);
-			var topY = fid === 'f0_garden' ? 38 : 6; // 庭园避开日历
-			pill(c, 6, topY, 116, 16, 'HP ' + hero.hp, null, null);
+			// HP已由左侧状态栏显示，迷你HUD只保留能量条
+			var topY = fid === 'f0_garden' ? 38 : 6;
 			var emax = core.getFlag('g_energy_max', 0);
 			if (inTower && emax > 0) {
 				var remain = Math.max(0, emax - core.getFlag('g_energy_used', 0));
 				pill(c, 6, topY + 20, 116, 16, remain + '/' + emax, 'rgb(150,140,255)', remain / emax);
 			}
-			var b = btnCtx;
-			b.clearRect(0, 0, 128, 40);
-			for (var i = 0; i < 3; i++) {
-				var cx = 24 + i * 40, cy = 20;
-				b.beginPath(); b.arc(cx, cy, BR, 0, Math.PI * 2);
-				b.fillStyle = 'rgba(20,16,40,0.78)'; b.fill();
-				b.strokeStyle = SYS; b.lineWidth = 1.5; b.stroke();
-				b.font = 'bold 14px "Microsoft YaHei", SimSun, sans-serif';
-				b.textAlign = 'center'; b.textBaseline = 'middle';
-				b.fillStyle = WHITE;
-				b.fillText(BTNS[i].g, cx, cy + 1);
 			}
-		}
-		requestAnimationFrame(tick);
+			requestAnimationFrame(tick);
 	})();
 		// 【东方星冥线】复刻原版开机动画+标题画面 (Main + Scene_Title, 800x480虚拟分辨率)
 		(function () {

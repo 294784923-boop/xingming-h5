@@ -34,6 +34,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"pano_f1_9.png",
 			"pano_f1_10.png",
 			"pano_f1_11.png",
+			"shiyi.png",
 			"fog_t1.png",
 			"fog_t3.png",
 			"005.png",
@@ -306,7 +307,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"exp": 0,
 			"equipment": [],
 			"items": {
-				"constants": {"book": 1},
+								"constants": {"book": 1, "fly": 1, "shiyiRing": 1},
 				"tools": {},
 				"equips": {}
 			},
@@ -851,22 +852,20 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 	},
 	"flags": {
 		"statusBarItems": [
-			"enableFloor",
-			"enableLv",
-			"enableHP",
-			"enableMana",
-			"enableAtk",
-			"enableDef",
-			"enableMDef",
-			"enableMoney",
-			"enableExp",
-			"enableKeys",
-			"enablePZF",
-			"enableSkill"
+				"enableFloor",
+				"enableLv",
+				"enableHP",
+				"enableAtk",
+				"enableDef",
+				"enableMDef",
+				"enableMoney",
+				"enableExp",
+				"enableKeys",
+				"enableSkill"
 		],
 		"autoScale": true,
-		"extendToolbar": false,
-		"flyNearStair": true,
+		"extendToolbar": true,
+				"flyNearStair": false,
 		"flyRecordPosition": false,
 		"itemFirstText": false,
 		"equipboxButton": false,
@@ -875,7 +874,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"betweenAttackMax": false,
 		"useLoop": false,
 		"startUsingCanvas": false,
-		"statusCanvas": false,
+		"statusCanvas": true,
 		"enableEnemyPoint": true,
 		"enableGentleClick": true,
 		"ignoreChangeFloor": true,
@@ -884,6 +883,6 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"enableRouteFolding": true,
 		"disableShopOnDamage": false,
 		"blurFg": false,
-		"hideLeftStatusBar": true
+		"hideLeftStatusBar": false
 	}
 }

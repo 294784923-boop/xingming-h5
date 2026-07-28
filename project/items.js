@@ -309,6 +309,13 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"useItemEffect": "core.ui.drawBook(0);",
 		"canUseItemEffect": "true"
 	},
+	"shiyiRing": {
+		"cls": "constants",
+		"name": "使役之环",
+		"text": "开启/关闭使役捕获模式。开启后击败怪物会自动捕获，再次使用关闭。",
+		"useItemEffect": "(function(){\n\tif(core.getFlag('shiyi_mode',0)){\n\t\tcore.removeFlag('shiyi_mode');\n\t\tcore.drawTip('捕获模式已关闭');\n\t}else{\n\t\tcore.setFlag('shiyi_mode',1);\n\t\tcore.drawTip('捕获模式已开启');\n\t}\n})();",
+		"canUseItemEffect": "true"
+	},
 	"fly": {
 		"cls": "constants",
 		"name": "楼层传送器",
@@ -533,7 +540,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 	"blueShard": {"cls":"constants","name":"蓝碎片","text":"蓝色的宝石碎片。","itemEffect":"(function(){core.insertAction({type:\"tip\",text:\"获得蓝碎片！(效果未实装)\"})})();"},
 	"greenShard": {"cls":"constants","name":"绿碎片","text":"绿色的宝石碎片。","itemEffect":"(function(){core.insertAction({type:\"tip\",text:\"获得绿碎片！(效果未实装)\"})})();"},
 	"expBook": {"cls":"constants","name":"经验书","text":"记载着战斗心得的书卷。经验+2。","itemEffect":"(function(){core.status.hero.exp+=2;core.insertAction({type:\"tip\",text:\"经验+2\"})})();"},
-	"redCrystal": {"cls":"constants","name":"红水晶","text":"散发着微光的红色水晶。","itemEffect":"(function(){core.insertAction({type:\"tip\",text:\"获得红水晶！(效果未实装)\"})})();"},
-	"blueCrystal": {"cls":"constants","name":"蓝水晶","text":"散发着微光的蓝色水晶。","itemEffect":"(function(){core.insertAction({type:\"tip\",text:\"获得蓝水晶！(效果未实装)\"})})();"},
+	"redCrystal": {"cls":"tools","name":"红水晶","text":"散发着微光的红色水晶。","useItemEffect":"core.addStatus('atk',1);core.setFlag('crystal_red',1);core.drawTip('攻击力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
+	"blueCrystal": {"cls":"tools","name":"蓝水晶","text":"散发着微光的蓝色水晶。","useItemEffect":"core.addStatus('def',1);core.setFlag('crystal_blue',1);core.drawTip('防御力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
 	"goldCoin": {"cls":"constants","name":"金币","text":"闪闪发光的金币。","itemEffect":"(function(){core.status.hero.money+=1;core.insertAction({type:\"tip\",text:\"金币+1\"})})();"},
 }

@@ -1,12 +1,13 @@
 main.floors.f3_8=
 {
     "floorId": "f3_8",
-    "title": "3:8",
-    "name": "3:8",
+    "title": "樱塔 9F「樱吹雪花小町」",
+    "name": "樱塔 9F「樱吹雪花小町」",
     "bgm": "bgm_tower3.mp3",
     "canFlyTo": true,
     "canFlyFrom": true,
     "canUseQuickShop": true,
+    "flyPoint": [2, 7],
     "defaultGround": 355,
     "images": [],
     "ratio": 1,

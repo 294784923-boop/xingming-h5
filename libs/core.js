@@ -228,7 +228,7 @@ function core () {
             'position': "center",
             "offset": 0,
             "title": [255, 215, 0, 1],
-            "background": [0, 0, 0, 0.85],
+            "background": "winskin.png",
             "text": [255, 255, 255, 1],
             "titlefont": 22,
             "textfont": 16,

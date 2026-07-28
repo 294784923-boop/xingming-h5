@@ -3274,7 +3274,7 @@ control.prototype.resize = function () {
     let hideLeftStatusBar = core.flags.hideLeftStatusBar;
     var BAR_WIDTH = hideLeftStatusBar ? 0 : Math.round(core._PY_ * 0.31);
 
-    var horizontalMaxRatio = (clientHeight - 2 * BORDER - (hideLeftStatusBar ? BORDER : 0)) / (core._PY_ + (hideLeftStatusBar ? 38 : 0));
+    var horizontalMaxRatio = (clientHeight - 2 * BORDER - (hideLeftStatusBar ? BORDER : 0) - (extendToolbar ? BORDER : 0)) / (core._PY_ + (hideLeftStatusBar ? 38 : 0) + (extendToolbar ? 38 : 0));
 
     if (clientWidth - 3 * BORDER >= core._PX_ + BAR_WIDTH || (clientWidth > clientHeight && horizontalMaxRatio < 1)) {
         // 横屏
