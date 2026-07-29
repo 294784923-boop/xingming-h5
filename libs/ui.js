@@ -2143,13 +2143,7 @@ ui.prototype._drawBook_pageinfo = function () {
 }
 
 ui.prototype._drawBook_drawBackground = function () {
-    core.setAlpha('ui', 1);
-    core.setFillStyle('ui', core.material.groundPattern);
-    core.fillRect('ui', 0, 0, core._PX_, core._PY_);
-
-    core.setAlpha('ui', 0.6);
-    core.setFillStyle('ui', '#000000');
-    core.fillRect('ui', 0, 0, core._PX_, core._PY_);
+    core.drawWindowSkin('winskin.png', 'ui', 0, 0, core._PX_, core._PY_);
 }
 
 ui.prototype._drawBook_drawEmpty = function () {

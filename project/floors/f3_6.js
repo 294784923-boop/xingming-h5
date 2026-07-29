@@ -2,8 +2,9 @@ main.floors.f3_6=
 {
     "floorId": "f3_6",
     "title": "樱塔 7F「樱吹雪花小町」",
-    "name": "樱塔 7F「樱吹雪花小町」",
+    "name": "樱塔 7F",
     "bgm": "bgm_tower3.mp3",
+    "subtitle": "樱吹雪花小町",
     "canFlyTo": true,
     "canFlyFrom": true,
     "canUseQuickShop": true,

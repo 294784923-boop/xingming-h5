@@ -463,6 +463,23 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 【东方星冥线】使役系统 (Baby_Buff)
 			// 存储使役敌人ID
 			core.setFlag('shiyi_enemy_id', 0);
+			// animFrameCount
+			core.animFrameCount = {"1":6,"3":6,"4":16,"5":12,"6":10,"7":12,"9":6,"10":4,"12":8,"13":6,"14":20,"15":16,"16":40,"17":40,"18":40,"19":40,"21":69,"24":15,"25":10,"26":15,"39":73,"40":73,"53":11,"77":75,"78":11,"89":11,"94":11,"95":73};
+			// 预加载战斗动画图片到 core._animImages（直接new Image，不走core.material.images.images）
+			core._animImages = {};
+			[1,3,4,5,6,7,9,10,12,13,14,15,21,24,25,26,53,77].forEach(function(id) {
+				var name = 'anim_battle_' + id + '.png';
+				var img = new Image();
+				img.src = 'project/images/' + name;
+				core._animImages[id] = img;
+			});
+			// 预加载地格动画图片
+			[16,17,18,19,39,40,78,89,94,95].forEach(function(id) {
+				var name = 'anim_tile32_' + id + '.png';
+				var img = new Image();
+				img.src = 'project/images/' + name;
+				core._animImages['tile_' + id] = img;
+			});
 			// 覆写 getRealStatus: atk/def 叠加使役加成
 			// 使役+水晶 buff 注入 getRealStatusOrDefault（战斗和面板共用）
 			var __grsd = core.getRealStatusOrDefault;
@@ -475,6 +492,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (name === 'def') val += Math.max(0, s.dex - 1);
 					if (name === 'mdef') val += (s.maxsp || 0);
 				}
+				if (name === 'atk' && core.getFlag('sc_meizhan_active', false)) { val += 1; }
 
 				return val;
 			};
@@ -483,9 +501,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				var enemy = core.material.enemys['e' + enemyId] || core.material.enemys[enemyId];
 				if (!enemy) return false;
 				core.setFlag('shiyi_enemy_id', enemyId);
-				core.setFlag('shiyi_name', enemy.name || '???');
-				core.updateStatusBar();
-				var stats = ENEMY_RMXP_STATS[enemyId];
+						core.setFlag('shiyi_name', enemy.name || '???');
+						core.updateStatusBar(true, true);
+						core.ui.drawStatusBar();
+						setTimeout(function(){ core.ui.drawStatusBar(); }, 200);
+					var stats = ENEMY_RMXP_STATS[enemyId];
 				var atkB = stats ? Math.max(0, stats.str - 1) : 0;
 				var defB = stats ? Math.max(0, stats.dex - 1) : 0;
 				core.drawTip('成功使役 ' + (enemy.name || '???') + ' (atk+' + atkB + ' def+' + defB + ')');
@@ -497,7 +517,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.setFlag('shiyi_enemy_id', 0);
 				core.setFlag('shiyi_name', '');
 				core.updateStatusBar();
-				core.drawTip('使役已释放');
+						core.ui.drawStatusBar();
+						core.drawTip('使役已释放');
 			};
 			// 战斗后自动捕获（捕获模式开启时）+ 清除水晶buff
 			// 【星冥线】RMXP 式升级系统 (CE23)
@@ -535,10 +556,201 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					if (numId > 0) core.captureShiyi(numId);
 				}
 				if (__afterBattle) __afterBattle.call(this, enemy, x, y, callback);
-				core.checkLevelUp();
-			};
+						core.checkLevelUp();
+						core.ui.drawStatusBar();
+					};
 
 		}
+			// 【东方星冥线】符卡系统 — 妖梦3张符卡
+			core.setFlag('sc_1_avail', true); core.setFlag('sc_2_avail', true); core.setFlag('sc_3_avail', true);
+			core.setFlag('sc_meizhan_active', false); core.setFlag('sc_meizhan_turns', 0);
+			core._SC_FULL = ['瞑斩「楼观赋予我能斩断弹幕的心之眼」','断迷剑「迷津慈航斩」','魂符「二重的苦轮」'];
+			// 瞑斩回合递减
+			var __sc_ab = core.events.afterBattle;
+			core.events.afterBattle = function(enemy, x, y, callback) {
+				if (core.getFlag('sc_meizhan_active', false)) { var tr = core.getFlag('sc_meizhan_turns',0)-1; if (tr<=0) { core.setFlag('sc_meizhan_active',false); core.setFlag('sc_meizhan_turns',0); core.drawTip('瞑斩效果结束'); } else { core.setFlag('sc_meizhan_turns',tr); } }
+				if (__sc_ab) __sc_ab.call(this, enemy, x, y, callback);
+				core.ui.drawStatusBar();
+			};
+			// 符卡总入口
+			core.useSpellCard = function(idx) { if (!core.isPlaying()||(core.status.event&&core.status.event.id)) return; if (!core.getFlag('sc_'+idx+'_avail',false)) { core.drawTip('该符卡已使用'); return; } if (idx===1) core._sc1(); else if (idx===2) core._sc2(); else if (idx===3) core._sc3(); };
+			// 瞑斩: 攻击+1持续6回合
+			core._sc1 = function() { core.playSound('zone'); core.setFlag('sc_1_avail',false); core.setFlag('sc_meizhan_active',true); core.setFlag('sc_meizhan_turns',6); core._showSkillImage('youmuskill1.png');core.playBattleAnim(12,{fps:12}); core.updateDamage(); core.drawTip(core._SC_FULL[0]); core.ui.drawStatusBar(); };
+			// 断迷剑: 斩断面前一堵墙
+			core._sc2 = function() { var h=core.status.hero; if(!h)return; var d=h.loc&&h.loc.direction,dx=0,dy=0; if(d==='up')dy=-1;else if(d==='down')dy=1;else if(d==='left')dx=-1;else if(d==='right')dx=1; var tx=h.loc.x+dx,ty=h.loc.y+dy; var block=core.getBlock(tx,ty); if(!block||!block.event||!block.event.noPass||block.event.cls!=='tileset'){core.drawTip('必须面对一堵墙方能使用');return;} core.playSound('pickaxe'); core.setFlag('sc_2_avail',false); core.setBlock(0,tx,ty); core._showSkillImage('youmuskill2.png');core.playBattleAnim(5,{tx:tx,ty:ty,fps:12}); core.drawTip(core._SC_FULL[1]); core.ui.drawStatusBar(); };
+			// 魂符: 镜像+传送
+			core._sc3 = function() { var h=core.status.hero; if(!h)return; var toX=core.bigmap.width-1-h.loc.x,toY=core.bigmap.height-1-h.loc.y; if(toX<0||toX>=core.bigmap.width||toY<0||toY>=core.bigmap.height){core.drawTip('无法位移至该位置');return;} var blk=core.getBlock(toX,toY); if(blk&&blk.event&&blk.event.noPass){core.drawTip('无法位移至该位置');return;} core.playSound('centerFly'); core.setFlag('sc_3_avail',false); core.clearMap('hero'); core.setHeroLoc('x',toX); core.setHeroLoc('y',toY); core.drawHero(); core._showSkillImage('youmuskill3.png');core.playBattleAnim(6,{fps:12}); core.drawTip(core._SC_FULL[2]); core.ui.drawStatusBar(); };
+		// 【星冥线】技能插图：画面中央显示，1.5秒后消失
+			core._showSkillImage = function(imgName) {
+				var gd = core.dom && core.dom.gameDraw; if (!gd) return;
+				var imgs = core.material && core.material.images && core.material.images.images; if (!imgs) return;
+				var img = imgs[imgName]; if (!img) return;
+				var SIZE = 416;
+				// 黑色柔雾遮罩（复刻RGM fog效果）
+				var overlay = document.createElement('div');
+				overlay.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0);z-index:199;pointer-events:none;transition:background 0.5s ease;';
+				gd.appendChild(overlay);
+				requestAnimationFrame(function(){ overlay.style.background = 'rgba(0,0,0,0.4)'; });
+				// 技能插图
+				var cv = document.createElement('canvas'); cv.width = SIZE; cv.height = SIZE;
+				cv.style.cssText = 'position:absolute;top:50%;z-index:200;pointer-events:none;';
+				var ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0, SIZE, SIZE);
+				gd.appendChild(cv);
+				var gdW = gd.getBoundingClientRect().width;
+				var centerX = (gdW - SIZE) / 2;
+				var centerY = -SIZE / 2;
+				var startTime = performance.now();
+				var DUR_IN = 350, DUR_HOLD = 800, DUR_OUT = 400;
+				// easeInOutCubic: RGM smoothstep 风格
+				function ease(t) { return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2; }
+				function anim(now) {
+					var elapsed = now - startTime;
+					var x, alpha, scale;
+					if (elapsed < DUR_IN) {
+						var t = ease(elapsed / DUR_IN);
+						x = centerX - (1-t) * gdW;
+						alpha = t;
+						scale = 0.9 + 0.1*t;
+					} else if (elapsed < DUR_IN + DUR_HOLD) {
+						x = centerX; alpha = 1; scale = 1;
+					} else if (elapsed < DUR_IN + DUR_HOLD + DUR_OUT) {
+						var t = ease((elapsed - DUR_IN - DUR_HOLD) / DUR_OUT);
+						x = centerX + t * gdW;
+						alpha = 1 - t;
+						scale = 1 + 0.1*t;
+					} else {
+						overlay.style.background = 'rgba(0,0,0,0)';
+						setTimeout(function(){ if(overlay.parentNode)overlay.parentNode.removeChild(overlay); if(cv.parentNode)cv.parentNode.removeChild(cv); }, 500);
+						return;
+					}
+					cv.style.opacity = alpha;
+					cv.style.left = x + 'px';
+					cv.style.marginTop = centerY + 'px';
+					cv.style.transform = 'scale('+scale+')';
+					requestAnimationFrame(anim);
+				}
+				requestAnimationFrame(anim);
+			};
+		// 【星冥线】战斗动画播放器 - 在角色位置播放RGM动画spritesheet
+			core.playBattleAnim = function(animId, opts) {
+				opts = opts || {};
+				var gd = core.dom && core.dom.gameDraw; if (!gd) return;
+				var h = core.status.hero; if (!h) return;
+				var img = core._animImages && core._animImages[animId]; if (!img) { console.log('playBattleAnim: image not found for', animId); return; }
+				var fc = (core.animFrameCount || {})['' + animId] || 0;
+				if (!fc) { console.log('playBattleAnim: no frame count for', animId); return; }
+				var TILE = 32, FRAME_W = 192, FRAME_H = 192;
+				var scale = opts.scale || 0.7;
+				var drawW = Math.round(FRAME_W * scale), drawH = Math.round(FRAME_H * scale);
+				var fps = opts.fps || 15;
+				var frameInterval = 1000 / fps;
+				// 目标位置(瓦片坐标) — 默认玩家位置，可override
+				var tx = opts.tx != null ? opts.tx : h.loc.x;
+				var ty = opts.ty != null ? opts.ty : h.loc.y;
+				// 转换为游戏像素坐标（考虑视口偏移）
+				var ox = core.bigmap ? (core.bigmap.offsetX || 0) : 0;
+				var oy = core.bigmap ? (core.bigmap.offsetY || 0) : 0;
+				var px = Math.round(tx * TILE + ox - (drawW - TILE) / 2);
+				var py = Math.round(ty * TILE + oy - (drawH - TILE) / 2);
+				// 动画canvas
+				var cv = document.createElement('canvas'); cv.width = drawW; cv.height = drawH;
+				cv.style.cssText = 'position:absolute;z-index:200;pointer-events:none;';
+				cv.style.left = px + 'px';
+				cv.style.top = py + 'px';
+				gd.appendChild(cv);
+				var ctx = cv.getContext('2d');
+				var frameIdx = 0;
+				var lastTime = performance.now();
+				var done = false;
+				function tick(now) {
+					if (done) return;
+					if (now - lastTime >= frameInterval) {
+						ctx.clearRect(0, 0, drawW, drawH);
+						var sx = frameIdx * FRAME_W;
+						ctx.drawImage(img, sx, 0, FRAME_W, FRAME_H, 0, 0, drawW, drawH);
+						frameIdx++;
+						lastTime = now;
+						if (frameIdx >= fc) {
+							cv.style.transition = 'opacity 0.3s ease';
+							cv.style.opacity = '0';
+							done = true;
+							setTimeout(function(){
+								if (cv.parentNode) cv.parentNode.removeChild(cv);
+								if (opts.onComplete) opts.onComplete();
+							}, 400);
+							return;
+						}
+					}
+					requestAnimationFrame(tick);
+				}
+				requestAnimationFrame(tick);
+			};
+
+		// 【星冥线】地格动画播放器 - 在地图坐标播放循环/一次性动画
+			core._tileAnims = [];
+			core.playTileAnim = function(x, y, animId, opts) {
+				opts = opts || {};
+				var gd = core.dom && core.dom.gameDraw; if (!gd) return;
+				var img = core._animImages && core._animImages['tile_' + animId]; if (!img) { console.log('playTileAnim: no image for', animId); return; }
+				var fc = (core.animFrameCount || {})['' + animId] || 0;
+				if (!fc) return;
+				var TILE = 32;
+				var loop = opts.loop !== false; // default true
+				var fps = opts.fps || 12;
+				var frameInterval = 1000 / fps;
+				var cv = document.createElement('canvas'); cv.width = TILE; cv.height = TILE;
+				cv.style.cssText = 'position:absolute;pointer-events:none;z-index:35;';
+				gd.appendChild(cv);
+				var ctx = cv.getContext('2d');
+				var frameIdx = 0, lastTime = performance.now(), done = false;
+				var animObj = {cv:cv, x:x, y:y, done:false};
+				core._tileAnims.push(animObj);
+				function tick(now) {
+					if (done || animObj.done) return;
+					// Remove if map changed
+					if (!core.status.floorId) { cleanup(); return; }
+					// Position at tile coordinates on screen
+					var vp = core.bigmap || {};
+					var offX = typeof vp.offsetX === 'number' ? vp.offsetX : 0;
+					var offY = typeof vp.offsetY === 'number' ? vp.offsetY : 0;
+					var scale = core.domStyle && core.domStyle.scale || 1;
+					cv.style.left = Math.round((x * TILE + offX) * scale) + 'px';
+					cv.style.top = Math.round((y * TILE + offY) * scale) + 'px';
+					cv.style.width = Math.round(TILE * scale) + 'px';
+					cv.style.height = Math.round(TILE * scale) + 'px';
+					if (now - lastTime >= frameInterval) {
+						ctx.clearRect(0, 0, TILE, TILE);
+						var sx = (frameIdx % fc) * TILE;
+						ctx.drawImage(img, sx, 0, TILE, TILE, 0, 0, TILE, TILE);
+						frameIdx++;
+						lastTime = now;
+						if (!loop && frameIdx >= fc) {
+							cleanup();
+							return;
+						}
+					}
+					requestAnimationFrame(tick);
+				}
+				function cleanup() {
+					done = true; animObj.done = true;
+					if (cv.parentNode) cv.parentNode.removeChild(cv);
+					var idx = core._tileAnims.indexOf(animObj);
+					if (idx >= 0) core._tileAnims.splice(idx, 1);
+				}
+				requestAnimationFrame(tick);
+				return animObj;
+			};
+			// 清除所有地格动画（切换楼层时调用）
+			core.clearTileAnims = function() {
+				var arr = core._tileAnims || [];
+				for (var i = arr.length - 1; i >= 0; i--) {
+					var a = arr[i];
+					a.done = true;
+					if (a.cv && a.cv.parentNode) a.cv.parentNode.removeChild(a.cv);
+				}
+				core._tileAnims = [];
+			};
+
 		// 【星冥线】手册每页5只怪，间距拉大
 			var __pageinfo = core.ui._drawBook_pageinfo;
 			core.ui._drawBook_pageinfo = function() {
@@ -563,9 +775,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				var col1 = left, col2 = left + (core._PX_ - left) * 9 / 25, col3 = left + (core._PX_ - left) * 17 / 25;
 				var pos = top + 74;
 				var f12 = core.ui._buildFont(12, false);
-				core.fillText('ui', '力+' + ab, col1, pos, '#FFCC88', f12);
-				core.fillText('ui', '巧+' + db, col2, pos, '#88CCFF', f12);
-				core.fillText('ui', '魔+' + mb, col3, pos, '#CC88FF', f12);
+				core.fillText('ui', '攻+' + ab, col1, pos, '#FFCC88', f12);
+				core.fillText('ui', '防+' + db, col2, pos, '#88CCFF', f12);
+				core.fillText('ui', '盾+' + mb, col3, pos, '#CC88FF', f12);
 			};
 
 		// 【东方星冥线】禁用双击瞬移（保留行走中重新指定目标）
@@ -774,7 +986,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					R(2, 2, 3, 3, light, c); R(3, 2, 1, 3, mid, c); R(2, 3, 3, 1, mid, c); R(3, 3, 1, 1, white, c);
 				}));
 				for (var k = 0; k < SPARKLE_N; k++)
-					sparkleP.push({ x: Math.random() * 466 - 50, y: Math.random() * 516 - 100, f: Math.floor(Math.random() * 7),
+					sparkleP.push({ x: Math.random() * (core._PX_ + 100) - 50, y: Math.random() * (core._PY_ + 150) - 100, f: Math.floor(Math.random() * 7),
 						t: 0.025 + Math.random() * 0.35, op: 64 + Math.random() * 191 });
 			}
 			function tick(now) {
@@ -813,11 +1025,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 						p.t -= dt;
 						if (p.t <= 0) { p.f = (p.f + 1) % 7; p.t = 0.025 + Math.random() * 0.35; }
 						if (p.op < 64 || p.y > h + 8 || p.x < -50 || p.x > w + 50) {
-							p.x = Math.random() * 466 - 50; p.y = Math.random() * 516 - 100;
+							p.x = Math.random() * (core._PX_ + 100) - 50; p.y = Math.random() * (core._PY_ + 150) - 100;
 							p.op = 255; p.f = 0;
 						}
 						cv.globalAlpha = Math.max(0, Math.min(1, p.op / 255));
-						cv.drawImage(sparkleImgs[p.f], p.x - 3, p.y - 3, 14, 14);
+						cv.drawImage(sparkleImgs[p.f], p.x - 5, p.y - 5, 10, 10);
 						cv.globalAlpha = 1;
 					});
 				}
@@ -916,7 +1128,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	// 【东方星冥线】全屏裸屏: 迷你悬浮HUD(HP/魔塔能量) + 右下圆钮(道具/存档/设置)
 	(function () {
 		var SYS = 'rgba(192,224,255,0.85)', WHITE = 'rgb(255,255,255)';
-		var hudCv = null, hudCtx = null, btnCv = null, btnCtx = null, lastHp = null;
+		var hudCv = null, hudCtx = null, btnCv = null, btnCtx = null, lastHp = null, scClickCv = null;
 		var BR = 15;
 		var BTNS = []; // 按钮已移到底部工具栏
 		function pill(c, x, y, w, h, text, fillColor, ratio) {
@@ -982,10 +1194,46 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			c.clearRect(0, 0, PX, PY);
 			// HP已由左侧状态栏显示，迷你HUD只保留能量条
 			var topY = fid === 'f0_garden' ? 38 : 6;
+			// 【星冥线】楼层副标题（塔内显示，在能量条上方）
+			if (inTower) {
+				var sub = (core.status.thisMap || {}).subtitle || '';
+				if (sub) {
+					c.font = 'bold 12px "Microsoft YaHei", sans-serif';
+					// 描边文字
+					c.textAlign = 'left'; c.textBaseline = 'top';
+					c.fillStyle = '#ccccff';
+					c.strokeStyle = '#000'; c.lineWidth = 2;
+					c.strokeText(sub, 8, topY);
+					c.fillText(sub, 8, topY);
+				}
+			}
 			var emax = core.getFlag('g_energy_max', 0);
 			if (inTower && emax > 0) {
 				var remain = Math.max(0, emax - core.getFlag('g_energy_used', 0));
 				pill(c, 6, topY + 20, 116, 16, remain + '/' + emax, 'rgb(150,140,255)', remain / emax);
+			}
+			// 【东方星冥线】符卡图标（间隙翻倍，手机不易点错）
+			var scImgs = core.material && core.material.images && core.material.images.images;
+			if (scImgs && inTower) {
+				var scIcons = [{k:'sc_1_avail',on:'sk_on1.png',off:'sk_off1.png'},{k:'sc_2_avail',on:'sk_on2.png',off:'sk_off2.png'},{k:'sc_3_avail',on:'sk_on3.png',off:'sk_off3.png'}];
+				var scX = PX - 136, scY = 6, scW = 36, scH = 36, scGap = 12;
+				for (var si = 0; si < 3; si++) { var sc = scIcons[si], avail = core.getFlag(sc.k, false), im = scImgs[avail ? sc.on : sc.off], ix = scX + si * (scW + scGap);
+					if (im) { c.drawImage(im, ix, scY, scW, scH); } else { c.fillStyle = avail ? 'rgba(100,200,255,0.5)' : 'rgba(60,60,60,0.5)'; c.fillRect(ix, scY, scW, scH); }
+					if (si === 0 && core.getFlag('sc_meizhan_active', false)) { var tr = core.getFlag('sc_meizhan_turns', 0); var cx = ix + scW/2, cy = scY + scH/2; c.fillStyle = 'rgba(0,0,0,0.65)'; c.fillRect(cx - 14, cy - 12, 28, 24); c.strokeStyle = '#FFD700'; c.lineWidth = 2; c.strokeRect(cx - 14, cy - 12, 28, 24); c.font = 'bold 16px Verdana'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#FFD700'; c.fillText(tr, cx, cy); }
+
+				}
+			}
+			// 符卡点击：直接在gameDraw上监听，用PX/PY坐标系，缩放无偏差
+			if (!scClickCv && gd) {
+				scClickCv = 1; // 标记已初始化
+				gd.addEventListener('mousedown', function(e) {
+					if (!core.isPlaying() || (core.status.event && core.status.event.id)) return;
+					var r = gd.getBoundingClientRect(), PX = core._PX_ || 672, PY = core._PY_ || 416;
+					var sx = PX / r.width, sy = PY / r.height;
+					var px = (e.clientX - r.left) * sx, py = (e.clientY - r.top) * sy;
+					var scX = PX - 136, scY = 6, scW = 36, scH = 36, scGap = 12;
+					for (var i = 0; i < 3; i++) { var ix = scX + i * (scW + scGap); if (px >= ix && px <= ix + scW && py >= scY && py <= scY + scH) { e.stopPropagation(); e.preventDefault(); core.useSpellCard(i + 1); return; } }
+				}, true);
 			}
 			}
 			requestAnimationFrame(tick);

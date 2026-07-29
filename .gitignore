@@ -1,1 +1,6 @@
 .DS_Store
+_server/
+_extensions/
+*.bak_hud
+_expbook_*
+启动服务.exe

@@ -4,6 +4,7 @@ main.floors.f1_5=
     "title": "1:5",
     "name": "1:5",
     "bgm": "bgm_tower1.mp3",
+    "subtitle": "等待风的日子",
     "canFlyTo": true,
     "canFlyFrom": true,
     "canUseQuickShop": true,

@@ -1738,84 +1738,98 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.ui.clearMap(ctx = core.dom.statusCanvasCtx); // 清空状态栏
 				// 【星冥线】背景图由CSS #statusCanvas 处理，避免随canvas拉伸变糊
 				core.ui.setFillStyle(ctx, core.status.globalAttribute.statusBarColor);
-				if (core.domStyle.isVertical) { // 竖屏
+				if (core.domStyle.isVertical) { // 竖屏 — 4列排版：楼层/HP/攻击/使役卡 | 钥匙/护盾/防御 | 金币/经验
+					// Row 0 (y=6): 楼层名 | HP | 攻击
 					core.drawImage(ctx, core.statusBar.icons.floor, 6, 6, 25, 25);
-							// 【星冥线】楼名换行显示（「」处分行：上行=塔名+楼层，下行=副标题）
-							var fn = (core.status.thisMap || {}).name || "Loading";
-							core.ui.setFont(ctx, 'bold 14px Verdana');
-							var idx = fn.indexOf('「');
-							if (idx > 0) {
-								core.ui.fillBoldText(ctx, fn.substring(0, idx), 42, 18, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-								core.ui.fillBoldText(ctx, fn.substring(idx), 42, 35, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-							} else if (fn.length > 5) {
-								core.ui.fillBoldText(ctx, fn.substring(0, 2), 42, 18, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-								core.ui.fillBoldText(ctx, fn.substring(2), 42, 35, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-							} else {
-								core.ui.fillBoldText(ctx, fn, 42, 28, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-							}
+					var fn = (core.status.thisMap || {}).name || "Loading";
+					core.ui.setFont(ctx, 'bold 14px Verdana');
+					var idx = fn.indexOf('「');
+					var title = idx > 0 ? fn.substring(0, idx) : (fn.length > 5 ? fn.substring(0, 2) : fn);
+					core.ui.fillBoldText(ctx, title, 42, 28, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
 					core.drawImage(ctx, core.statusBar.icons.hp, 137, 6, 25, 25);
 					fill(core.formatBigNumber(core.getRealStatus('hp')), 173, 26);
 					core.drawImage(ctx, core.statusBar.icons.atk, 268, 6, 25, 25);
-					fill(core.formatBigNumber(core.getRealStatus('atk')), 304, 26, core.getFlag('crystal_red',0) ? '#FF6666' : undefined);
+					var atkVal = core.getRealStatus('atk'), atkColor = core.getFlag('crystal_red',0) ? '#FF6666' : (core.getFlag('sc_meizhan_active',false) ? '#FFD700' : undefined);
+					fill(core.formatBigNumber(atkVal), 304, 26, atkColor);
+					if (core.getFlag('sc_meizhan_active', false)) { ctx.font = 'bold 10px Verdana'; ctx.textAlign = 'left'; ctx.fillStyle = '#FFD700'; ctx.fillText('+1', 304 + ctx.measureText(core.formatBigNumber(atkVal)).width + 4, 26); ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor); }
 					ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor);
-					core.drawImage(ctx, core.statusBar.icons.def, 6, 38, 25, 25);
-					fill(core.formatBigNumber(core.getRealStatus('def')), 42, 58);
-					core.drawImage(ctx, core.statusBar.icons.mdef, 137, 38, 25, 25);
-					fill(core.formatBigNumber(core.getRealStatus('mdef')), 173, 58);
-					core.drawImage(ctx, core.statusBar.icons.money, 268, 38, 25, 25);
-					fill(core.formatBigNumber(core.status.hero.money), 304, 58);
-					core.drawImage(ctx, core.statusBar.icons.exp, 6, 70, 25, 25);
-							// 【星冥线】经验 cur/need 文本
-							var need = core.getNextLvUpNeed();
-							var cur = core.status.hero.exp;
-							if (need != null && need > 0) {
-								fill(cur + '/' + need, 42, 90, '#E8E8FF');
+					// Row 1 (y=38): 钥匙 | 护盾(mdef) | 防御
+						fill(core.setTwoDigits(core.itemCount('yellowKey')), 34, 58, '#FFCCAA');
+						fill(core.setTwoDigits(core.itemCount('blueKey')), 64, 58, '#AAAADD');
+						fill(core.setTwoDigits(core.itemCount('redKey')), 94, 58, '#FF8888');
+						core.drawImage(ctx, core.statusBar.icons.mdef, 137, 38, 25, 25);
+						fill(core.formatBigNumber(core.getRealStatus('mdef')), 173, 58, '#FFFFFF');
+						core.drawImage(ctx, core.statusBar.icons.def, 268, 38, 25, 25);
+						fill(core.formatBigNumber(core.getRealStatus('def')), 304, 58, '#FFFFFF');
+					// Row 2 (y=70): 金币 | 经验
+						core.drawImage(ctx, core.statusBar.icons.money, 6, 70, 25, 25);
+						fill(core.formatBigNumber(core.status.hero.money), 42, 90, '#FFFFFF');
+					core.drawImage(ctx, core.statusBar.icons.exp, 137, 70, 25, 25);
+					var need = core.getNextLvUpNeed();
+					var cur = core.status.hero.exp;
+					if (need != null && need > 0) {
+						fill(cur + '/' + need, 173, 90, '#E8E8FF');
+					} else {
+						fill('MAX', 173, 90, '#FFD700');
+					}
+					// 【星冥线】使役卡片（右侧第4列，跨3行；左=图形+名，右=增益）
+						var cx = 348, cy = 6, cw = 126, ch = 96;
+						ctx.fillStyle = 'rgba(16, 12, 36, 0.85)';
+						ctx.fillRect(cx, cy, cw, ch);
+						ctx.strokeStyle = 'rgba(192, 224, 255, 0.35)';
+						ctx.lineWidth = 1;
+						ctx.strokeRect(cx + 0.5, cy + 0.5, cw - 1, ch - 1);
+						var __shiyi_id = core.getFlag('shiyi_enemy_id', 0);
+						if (__shiyi_id > 0) {
+							var __shiyi_name = core.getFlag('shiyi_name', '???');
+							var __s = ENEMY_RMXP_STATS[__shiyi_id];
+							var __ab = __s ? Math.max(0, __s.str - 1) : 0;
+							var __db = __s ? Math.max(0, __s.dex - 1) : 0;
+							var __mb = __s ? (__s.maxsp || 0) : 0;
+							var __e = core.material.enemys['e' + __shiyi_id];
+							var __iconId = core.material.icons.enemys['e' + __shiyi_id];
+							var __enemysImg = core.material.images.enemys;
+							// 左：怪物图形（40×40）
+							if (__iconId != null && __enemysImg) {
+								core.drawImage(ctx, __enemysImg, 0, __iconId * 32, 32, 32, cx + 6, cy + 6, 40, 40);
 							} else {
-								fill('MAX', 42, 90, '#FFD700');
-							}
-							// 【星冥线】钥匙（第三列，避开经验文本）
-							fill(core.setTwoDigits(core.itemCount('yellowKey')), 268, 90, '#FFCCAA');
-							fill(core.setTwoDigits(core.itemCount('blueKey')), 303, 90, '#AAAADD');
-							fill(core.setTwoDigits(core.itemCount('redKey')), 338, 90, '#FF8888');
-							// 【星冥线】使役信息（带怪物图）
-							var __shiyi_id = core.getFlag('shiyi_enemy_id', 0);
-							if (__shiyi_id > 0) {
-								var __shiyi_name = core.getFlag('shiyi_name', '???');
-								var __s = ENEMY_RMXP_STATS[__shiyi_id];
-								var __ab = __s ? Math.max(0, __s.str - 1) : 0;
-								var __db = __s ? Math.max(0, __s.dex - 1) : 0;
-								var __mb = __s ? (__s.maxsp || 0) : 0;
-								var __e = core.material.enemys['e' + __shiyi_id];
 								var __img = __e && core.material.images.images[__e.bigImage];
 								if (__img) {
-									core.drawImage(ctx, __img, 0, 0, 32, 32, 6, 100, 32, 32);
+									core.drawImage(ctx, __img, 0, 0, 32, 32, cx + 6, cy + 6, 40, 40);
 								}
-								core.ui.setFont(ctx, 'bold 12px Verdana');
-								core.ui.fillBoldText(ctx, __shiyi_name, 42, 110, core.arrayToRGBA([200, 255, 200, 1]));
-								core.ui.fillBoldText(ctx, '+' + __ab + '/' + __db + '/' + __mb, 42, 125, core.arrayToRGBA([180, 255, 180, 1]));
 							}
+							// 左：怪物名（居中于图形下方）
+								ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+								core.ui.setFont(ctx, 'bold 12px Verdana');
+								core.ui.fillBoldText(ctx, __shiyi_name, cx + 26, cy + 54, core.arrayToRGBA([200, 255, 200, 1]));
+												ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+												// 右：增益属性（均匀分布）
+												core.ui.setFont(ctx, 'bold 12px Verdana');
+												var rx = cx + 54;
+												core.ui.fillBoldText(ctx, '攻+' + __ab, rx, cy + 16, core.arrayToRGBA([255, 200, 140, 1]));
+												core.ui.fillBoldText(ctx, '防+' + __db, rx, cy + 46, core.arrayToRGBA([140, 200, 255, 1]));
+												core.ui.fillBoldText(ctx, '盾+' + __mb, rx, cy + 76, core.arrayToRGBA([200, 150, 255, 1]));
+						} else {
+							core.ui.setFont(ctx, 'bold 10px Verdana');
+							core.ui.fillBoldText(ctx, '无使役', cx + 24, cy + 48, core.arrayToRGBA([150, 150, 180, 1]));
+						}
 						} else if (!core.flags.hideLeftStatusBar) { // 横屏且未隐藏状态栏
 					core.drawImage(ctx, core.statusBar.icons.floor, 6, 9, 25, 25);
 							// 【星冥线】楼名换行显示（「」处分行：上行=塔名+楼层，下行=副标题）
 							var fn = (core.status.thisMap || {}).name || "Loading";
 							core.ui.setFont(ctx, 'bold 14px Verdana');
 							var idx = fn.indexOf('「');
-							if (idx > 0) {
-								core.ui.fillBoldText(ctx, fn.substring(0, idx), 42, 25, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-								core.ui.fillBoldText(ctx, fn.substring(idx), 42, 42, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-							} else if (fn.length > 5) {
-								core.ui.fillBoldText(ctx, fn.substring(0, 2), 42, 25, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-								core.ui.fillBoldText(ctx, fn.substring(2), 42, 42, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-							} else {
-								core.ui.fillBoldText(ctx, fn, 42, 34, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
-							}
+							var title = idx > 0 ? fn.substring(0, idx) : (fn.length > 5 ? fn.substring(0, 2) : fn);
+							core.ui.fillBoldText(ctx, title, 42, 34, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
 					// 【星冥线】插入等级行
 					core.drawImage(ctx, core.statusBar.icons.lv || core.statusBar.icons.floor, 6, 43, 25, 25);
 					fill(core.getLvName ? core.getLvName() : ('Lv.' + core.status.hero.lv), 42, 63);
 					core.drawImage(ctx, core.statusBar.icons.hp, 6, 77, 25, 25);
 					fill(core.formatBigNumber(core.getRealStatus('hp')), 42, 97);
 					core.drawImage(ctx, core.statusBar.icons.atk, 6, 111, 25, 25);
-					fill(core.formatBigNumber(core.getRealStatus('atk')), 42, 131, core.getFlag('crystal_red',0) ? '#FF6666' : undefined);
+					var atkVal = core.getRealStatus('atk'), atkColor = core.getFlag('crystal_red',0) ? '#FF6666' : (core.getFlag('sc_meizhan_active',false) ? '#FFD700' : undefined);
+					fill(core.formatBigNumber(atkVal), 42, 131, atkColor);
+					if (core.getFlag('sc_meizhan_active', false)) { ctx.font = 'bold 10px Verdana'; ctx.textAlign = 'left'; ctx.fillStyle = '#FFD700'; ctx.fillText('+1', 42 + ctx.measureText(core.formatBigNumber(atkVal)).width + 4, 131); ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor); }
 					core.drawImage(ctx, core.statusBar.icons.def, 6, 145, 25, 25);
 					fill(core.formatBigNumber(core.getRealStatus('def')), 42, 165, core.getFlag('crystal_blue',0) ? '#6666FF' : undefined);
 					ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor);
@@ -1835,22 +1849,45 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					fill(core.setTwoDigits(core.itemCount('yellowKey')), 11, 301, '#FFCCAA');
 					fill(core.setTwoDigits(core.itemCount('blueKey')), 46, 301, '#AAAADD');
 					fill(core.setTwoDigits(core.itemCount('redKey')), 81, 301, '#FF8888');
-					// 【星冥线】使役信息（带怪物图）
-					var __shiyi_id = core.getFlag('shiyi_enemy_id', 0);
-					if (__shiyi_id > 0) {
-						var __shiyi_name = core.getFlag('shiyi_name', '???');
-						var __s = ENEMY_RMXP_STATS[__shiyi_id];
-						var __ab = __s ? Math.max(0, __s.str - 1) : 0;
-						var __db = __s ? Math.max(0, __s.dex - 1) : 0;
-						var __mb = __s ? (__s.maxsp || 0) : 0;
-						var __e = core.material.enemys['e' + __shiyi_id];
-						var __img = __e && core.material.images.images[__e.bigImage];
-						if (__img) {
-							core.drawImage(ctx, __img, 0, 0, 32, 32, 6, 320, 32, 32);
-						}
+					// 【星冥线】使役卡片
+						var cx = 4, cy = 308, cw = 140, ch = 96;
+						// 卡片背景
+						ctx.fillStyle = 'rgba(16, 12, 36, 0.85)';
+						ctx.fillRect(cx, cy, cw, ch);
+						ctx.strokeStyle = 'rgba(192, 224, 255, 0.35)';
+						ctx.lineWidth = 1;
+						ctx.strokeRect(cx + 0.5, cy + 0.5, cw - 1, ch - 1);
+						var __shiyi_id = core.getFlag('shiyi_enemy_id', 0);
+						if (__shiyi_id > 0) {
+							var __shiyi_name = core.getFlag('shiyi_name', '???');
+							var __s = ENEMY_RMXP_STATS[__shiyi_id];
+							var __ab = __s ? Math.max(0, __s.str - 1) : 0;
+							var __db = __s ? Math.max(0, __s.dex - 1) : 0;
+							var __mb = __s ? (__s.maxsp || 0) : 0;
+							var __e = core.material.enemys['e' + __shiyi_id];
+							// 优先用 enemys.png 图标（每个怪有唯一行号），fallback 到 bigImage
+							var __iconId = core.material.icons.enemys['e' + __shiyi_id];
+							var __enemysImg = core.material.images.enemys;
+							if (__iconId != null && __enemysImg) {
+								core.drawImage(ctx, __enemysImg, 0, __iconId * 32, 32, 32, cx + 6, cy + 8, 32, 32);
+							} else {
+								var __img = __e && core.material.images.images[__e.bigImage];
+								if (__img) {
+									core.drawImage(ctx, __img, 0, 0, 32, 32, cx + 6, cy + 8, 32, 32);
+								}
+							}
 						core.ui.setFont(ctx, 'bold 12px Verdana');
-						core.ui.fillBoldText(ctx, __shiyi_name, 42, 335, core.arrayToRGBA([200, 255, 200, 1]));
-						core.ui.fillBoldText(ctx, '+' + __ab + '/' + __db + '/' + __mb, 42, 350, core.arrayToRGBA([180, 255, 180, 1]));
+						core.ui.fillBoldText(ctx, __shiyi_name, cx + 44, cy + 22, core.arrayToRGBA([200, 255, 200, 1]));
+						core.ui.setFont(ctx, 'bold 10px Verdana');
+						var sy = cy + 44;
+						core.ui.fillBoldText(ctx, '攻 +' + __ab, cx + 44, sy, core.arrayToRGBA([255, 200, 140, 1]));
+						sy += 16;
+						core.ui.fillBoldText(ctx, '防 +' + __db, cx + 44, sy, core.arrayToRGBA([140, 200, 255, 1]));
+						sy += 16;
+						core.ui.fillBoldText(ctx, '盾 +' + __mb, cx + 44, sy, core.arrayToRGBA([200, 150, 255, 1]));
+					} else {
+						core.ui.setFont(ctx, 'bold 11px Verdana');
+						core.ui.fillBoldText(ctx, '无使役怪物', cx + 10, cy + 46, core.arrayToRGBA([150, 150, 180, 1]));
 					}
 				}
 			} else if (core.flags.hideLeftStatusBar && !core.domStyle.isVertical) { // 横屏且隐藏状态栏
