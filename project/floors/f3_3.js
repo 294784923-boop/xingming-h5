@@ -51,10 +51,7 @@ main.floors.f3_3=
             "\\t[幽幽子,face_yuyuko_02.png]差不多。",
             "\\t[妖梦,face_youmu_03.png]这听起来一点都不轻松……",
             "\\t[幽幽子,face_yuyuko_00.png]所以才要好好看着自己的 HP 哦。",
-            {
-                "type": "function",
-                "function": "function(){core.removeBlock(9, 3)}"
-            }
+            {"type": "hide", "remove": true}
         ]
     },
     "changeFloor": {

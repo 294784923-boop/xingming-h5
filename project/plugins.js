@@ -907,6 +907,20 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			this._doResize(obj);
 			this.setToolbarButton();
 			core.updateStatusBar();
+			// 【修复】v2大地图canvas尺寸修正：_resize_canvas误把所有canvas设成_PX_*scale,
+			// 但v2大地图画布内部宽度是_PX_+64, 比例不对会导致勇者和地图偏移。
+			// 注意 _resize_canvas 在游戏内是RAF异步设置的，此处也用RAF排在其后执行。
+			if (core.bigmap && core.bigmap.v2) {
+				var _bw = (core._PX_ + 64) * core.domStyle.scale;
+				var _bh = (core._PY_ + 64) * core.domStyle.scale;
+				requestAnimationFrame(function() {
+					if (!core.bigmap || !core.bigmap.v2) return;
+					core.bigmap.canvas.forEach(function(cn) {
+						var c = document.getElementById(cn);
+						if (c) { c.style.width = _bw + 'px'; c.style.height = _bh + 'px'; }
+					});
+				});
+			}
 		}
 		// 【东方星冥线】塔层BGM (原版: 庭园=开场, 1塔=二色莲传说~rum, 3塔=妖妖的梦) — 文件名必须ASCII(启动服务.exe对CJK名404)
 		var BGM_OF = function (fid) {
@@ -921,7 +935,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (!core.isPlaying() || !core.status.floorId) return;
 			var b = BGM_OF(core.status.floorId);
 			if (!b) return;
-			if (core.musicStatus.playingBgm !== b[0] && lastBgmKey !== b[0] + core.status.floorId) {
+			var shouldPlay = core.musicStatus.playingBgm !== b[0] && lastBgmKey !== b[0] + core.status.floorId;
+			// 即使名字匹配，如果音频被外部暂停（如浏览器音频线程挂起），也要重播
+			if (!shouldPlay && core.musicStatus.bgmStatus && core.musicStatus.playingBgm === b[0]) {
+				var cur = core.material.bgms[b[0]];
+				if (cur && cur.paused) shouldPlay = true;
+			}
+			if (shouldPlay) {
 				core.playBgm(b[0]);
 				lastBgmKey = b[0] + core.status.floorId;
 			}
@@ -2495,6 +2515,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		core.events._startGame_setHard = function () {
 			_startGame_setHard.call(core.events);
 			core.initHeros();
+			// 锁定竖屏
+			try {
+				if (screen.orientation && screen.orientation.lock) {
+					screen.orientation.lock('portrait').catch(function(){});
+				}
+			} catch(e) {}
 		}
 
 		// 切换角色

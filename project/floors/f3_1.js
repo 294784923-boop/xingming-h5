@@ -54,10 +54,7 @@ main.floors.f3_1=
                 "function": "function(){core.status.hero.items.constants.fly=1;core.updateStatusBar()}"
             },
             "获得了【楼层传送器】！按G键可以在已访问的楼层间传送。",
-            {
-                "type": "function",
-                "function": "function(){core.removeBlock(11, 9)}"
-            }
+            {"type": "hide", "remove": true}
         ]
     },
     "changeFloor": {

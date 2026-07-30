@@ -32,7 +32,7 @@ main.floors.f3_2=
     "firstArrive": [],
     "events": {
         "11,9": ["\\t[幽幽子,face_yuyuko_00.png]妖梦，进入使役准备状态吧。这样打倒怪物之后，可以把它役使掉。（使役准备状态需要保持按住F键）", "\\t[幽幽子,face_yuyuko_01.png]这样会得到一点属性提升，不过，这一场的经验就拿不到了。", "\\t[妖梦,face_youmu_00.png]原来如此……是要选强化，还是选经验吗？", "\\t[幽幽子,face_yuyuko_00.png]嗯。而且，一次只能带一只使役怪物。", "\\t[妖梦,face_youmu_04.png]那要是再役使别的呢？", "\\t[幽幽子,face_yuyuko_02.png]前一只就会不见。", "\\t[妖梦,face_youmu_03.png]真是很不讲情面呢。", "\\t[幽幽子,face_yuyuko_03.png]符卡里就是这样。", "\\t[幽幽子,face_yuyuko_01.png]你查看怪物的时候，应该也能看到役使它会得到什么增益。", "\\t[妖梦,face_youmu_04.png]这样就知道该选谁了。", "\\t[幽幽子,face_yuyuko_00.png]对。而且，会有怪物被我特别推荐。我推荐使役的怪物，名字会变成粉色。", "\\t[妖梦,face_youmu_04.png]……粉色？", "\\t[幽幽子,face_yuyuko_00.png]很好认吧？", "\\t[妖梦,face_youmu_00.png]是挺好认的，但为什么是粉色……", "\\t[幽幽子,face_yuyuko_01.png]因为比较可爱呀。", "\\t[妖梦,face_youmu_04.png]这和可爱有什么关系！", "\\t[幽幽子,face_yuyuko_00.png]总之，现在先试着役使这层的【石怪】吧。", "\\t[妖梦,face_youmu_03.png]果然是要我先拿最麻烦的练手啊……",
-            {"type": "function", "function": "function(){core.removeBlock(11, 9)}"}]
+            {"type": "hide", "remove": true}]
     },
     "changeFloor": {"12,11": {"floorId": "f3_3", "loc": [2, 11]}, "11,2": {"floorId": "f3_1", "loc": [11, 12]}},
     "afterBattle": {},

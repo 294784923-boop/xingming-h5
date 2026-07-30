@@ -38,7 +38,7 @@ main.floors.f3_0=
             "\\t[幽幽子,face_yuyuko_00.png]如果害怕走得太快不小心撞到门或怪物，你可以按住 Shift 键进入低速模式，松开按键就恢复正常速度了。",
             "\\t[幽幽子,face_yuyuko_02.png]来吧，妖梦。让我看看，你还能不能像现在一样，追上我。",
             "\\t[妖梦,face_youmu_01.png]这话听起来像是要把我丢下。",
-            {"type": "function", "function": "function(){core.removeBlock(5, 3)}"}
+            {"type": "hide", "remove": true}
         ],
         "7,12": [
             "需要通关该魔塔才能离开。"
