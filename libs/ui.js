@@ -2185,12 +2185,20 @@ ui.prototype._drawBook_drawBox = function (index, enemy, top, pageinfo) {
     core.strokeRect('ui', 22, border_top, 42, 42, '#DDDDDD', 2);
     var blockInfo = core.getBlockInfo(enemy.id);
 
+    // 从 tile 定义获取 filter（色调等）
+    var filter = null;
+    if (blockInfo && blockInfo.number && core.maps.blocksInfo[blockInfo.number]) {
+        filter = core.maps.blocksInfo[blockInfo.number].filter || null;
+    }
+
     // 检查大怪物
     if (blockInfo.bigImage) {
-        core.status.boxAnimateObjs.push({
+        var obj = {
             bigImage: blockInfo.bigImage, face: blockInfo.face, centerX: border_left + 21, centerY: border_top + 21,
             max_width: 60
-        });
+        };
+        if (filter) obj.filter = filter;
+        core.status.boxAnimateObjs.push(obj);
     }
     else if (blockInfo.height >= 42) {
         var originEnemy = core.material.enemys[enemy.id] || {};
@@ -2199,26 +2207,32 @@ ui.prototype._drawBook_drawBox = function (index, enemy, top, pageinfo) {
             originEnemy.is32x32 = this._drawBook_is32x32(blockInfo);
         }
         if (originEnemy.is32x32) {
-            core.status.boxAnimateObjs.push({
+            var obj = {
                 'bgx': border_left, 'bgy': border_top, 'bgWidth': 42, 'bgHeight': 42,
                 'x': img_left, 'y': img_top, 'height': 32, 'animate': blockInfo.animate,
                 'image': blockInfo.image, 'pos': blockInfo.posY * blockInfo.height + blockInfo.height - 32
-            });
+            };
+            if (filter) obj.filter = filter;
+            core.status.boxAnimateObjs.push(obj);
         } else {
             var drawWidth = 42 * 32 / blockInfo.height;
-            core.status.boxAnimateObjs.push({
+            var obj = {
                 'bgx': border_left, 'bgy': border_top, 'bgWidth': 42, 'bgHeight': 42,
                 'x': img_left - 5 + (42 - drawWidth) / 2, 'y': img_top - 5, 'dw': drawWidth, 'dh': 42,
                 'height': blockInfo.height, 'animate': blockInfo.animate,
                 'image': blockInfo.image, 'pos': blockInfo.posY * blockInfo.height
-            });
+            };
+            if (filter) obj.filter = filter;
+            core.status.boxAnimateObjs.push(obj);
         }
     } else {
-        core.status.boxAnimateObjs.push({
+        var obj = {
             'bgx': border_left, 'bgy': border_top, 'bgWidth': 42, 'bgHeight': 42,
             'x': img_left, 'y': img_top, 'height': 32, 'animate': blockInfo.animate,
             'image': blockInfo.image, 'pos': blockInfo.posY * blockInfo.height
-        });
+        };
+        if (filter) obj.filter = filter;
+        core.status.boxAnimateObjs.push(obj);
     }
 }
 

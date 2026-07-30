@@ -464,10 +464,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 存储使役敌人ID
 			core.setFlag('shiyi_enemy_id', 0);
 			// animFrameCount
-			core.animFrameCount = {"1":6,"3":6,"4":16,"5":12,"6":10,"7":12,"9":6,"10":4,"12":8,"13":6,"14":20,"15":16,"16":40,"17":40,"18":40,"19":40,"21":69,"24":15,"25":10,"26":15,"39":73,"40":73,"53":11,"77":75,"78":11,"89":11,"94":11,"95":73};
+			core.animFrameCount = {"1":6,"3":6,"4":16,"5":12,"6":10,"7":12,"9":6,"10":4,"12":8,"13":6,"14":20,"15":16,"16":40,"17":40,"18":40,"19":40,"21":69,"24":15,"25":10,"26":15,"36":70,"39":73,"40":73,"8":6,"53":11,"77":75,"78":11,"89":11,"94":11,"95":73};
 			// 预加载战斗动画图片到 core._animImages（直接new Image，不走core.material.images.images）
 			core._animImages = {};
-			[1,3,4,5,6,7,9,10,12,13,14,15,21,24,25,26,53,77].forEach(function(id) {
+			[1,3,4,5,6,7,8,9,10,12,13,14,15,21,24,25,26,36,53,77].forEach(function(id) {
 				var name = 'anim_battle_' + id + '.png';
 				var img = new Image();
 				img.src = 'project/images/' + name;
@@ -509,6 +509,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				var atkB = stats ? Math.max(0, stats.str - 1) : 0;
 				var defB = stats ? Math.max(0, stats.dex - 1) : 0;
 				core.drawTip('成功使役 ' + (enemy.name || '???') + ' (atk+' + atkB + ' def+' + defB + ')');
+				core.playBattleAnim(36, {scale: 1.0, fps: 25});
+				core.setFlag('shiyi_mode', 0);
 				return true;
 			};
 
@@ -575,13 +577,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 符卡总入口
 			core.useSpellCard = function(idx) { if (!core.isPlaying()||(core.status.event&&core.status.event.id)) return; if (!core.getFlag('sc_'+idx+'_avail',false)) { core.drawTip('该符卡已使用'); return; } if (idx===1) core._sc1(); else if (idx===2) core._sc2(); else if (idx===3) core._sc3(); };
 			// 瞑斩: 攻击+1持续6回合
-			core._sc1 = function() { core.playSound('zone'); core.setFlag('sc_1_avail',false); core.setFlag('sc_meizhan_active',true); core.setFlag('sc_meizhan_turns',6); core._showSkillImage('youmuskill1.png');core.playBattleAnim(12,{fps:12}); core.updateDamage(); core.drawTip(core._SC_FULL[0]); core.ui.drawStatusBar(); };
+			core._sc1 = function() { var _sc=this; core._showSkillImage('youmuskill1.png', function(){ core.playSound('zone'); core.setFlag('sc_1_avail',false); core.setFlag('sc_meizhan_active',true); core.setFlag('sc_meizhan_turns',6); core.playBattleAnim(12,{fps:12}); core.updateDamage(); core.drawTip(core._SC_FULL[0]); core.ui.drawStatusBar(); }); };
 			// 断迷剑: 斩断面前一堵墙
-			core._sc2 = function() { var h=core.status.hero; if(!h)return; var d=h.loc&&h.loc.direction,dx=0,dy=0; if(d==='up')dy=-1;else if(d==='down')dy=1;else if(d==='left')dx=-1;else if(d==='right')dx=1; var tx=h.loc.x+dx,ty=h.loc.y+dy; var block=core.getBlock(tx,ty); if(!block||!block.event||!block.event.noPass||block.event.cls!=='tileset'){core.drawTip('必须面对一堵墙方能使用');return;} core.playSound('pickaxe'); core.setFlag('sc_2_avail',false); core.setBlock(0,tx,ty); core._showSkillImage('youmuskill2.png');core.playBattleAnim(5,{tx:tx,ty:ty,fps:12}); core.drawTip(core._SC_FULL[1]); core.ui.drawStatusBar(); };
+			core._sc2 = function() { var h=core.status.hero; if(!h)return; var d=h.loc&&h.loc.direction,dx=0,dy=0; if(d==='up')dy=-1;else if(d==='down')dy=1;else if(d==='left')dx=-1;else if(d==='right')dx=1; var tx=h.loc.x+dx,ty=h.loc.y+dy; var block=core.getBlock(tx,ty); if(!block||!block.event||!block.event.noPass||block.event.cls!=='tileset'){core.drawTip('必须面对一堵墙方能使用');return;} core._showSkillImage('youmuskill2.png', function(){ core.playSound('pickaxe'); core.setFlag('sc_2_avail',false); core.setBlock(0,tx,ty); core.playBattleAnim(5,{tx:tx,ty:ty,fps:12}); core.drawTip(core._SC_FULL[1]); core.ui.drawStatusBar(); }); };
 			// 魂符: 镜像+传送
-			core._sc3 = function() { var h=core.status.hero; if(!h)return; var toX=core.bigmap.width-1-h.loc.x,toY=core.bigmap.height-1-h.loc.y; if(toX<0||toX>=core.bigmap.width||toY<0||toY>=core.bigmap.height){core.drawTip('无法位移至该位置');return;} var blk=core.getBlock(toX,toY); if(blk&&blk.event&&blk.event.noPass){core.drawTip('无法位移至该位置');return;} core.playSound('centerFly'); core.setFlag('sc_3_avail',false); core.clearMap('hero'); core.setHeroLoc('x',toX); core.setHeroLoc('y',toY); core.drawHero(); core._showSkillImage('youmuskill3.png');core.playBattleAnim(6,{fps:12}); core.drawTip(core._SC_FULL[2]); core.ui.drawStatusBar(); };
+			core._sc3 = function() { var h=core.status.hero; if(!h)return; var toX=core.bigmap.width-1-h.loc.x,toY=core.bigmap.height-1-h.loc.y; if(toX<0||toX>=core.bigmap.width||toY<0||toY>=core.bigmap.height){core.drawTip('无法位移至该位置');return;} var blk=core.getBlock(toX,toY); if(blk&&blk.event&&blk.event.noPass){core.drawTip('无法位移至该位置');return;} core._showSkillImage('youmuskill3.png', function(){ core.playSound('centerFly'); core.setFlag('sc_3_avail',false); core.clearMap('hero'); core.setHeroLoc('x',toX); core.setHeroLoc('y',toY); core.drawHero(); core.playBattleAnim(6,{fps:12}); core.drawTip(core._SC_FULL[2]); core.ui.drawStatusBar(); }); };
 		// 【星冥线】技能插图：画面中央显示，1.5秒后消失
-			core._showSkillImage = function(imgName) {
+			core._showSkillImage = function(imgName, onDone) {
 				var gd = core.dom && core.dom.gameDraw; if (!gd) return;
 				var imgs = core.material && core.material.images && core.material.images.images; if (!imgs) return;
 				var img = imgs[imgName]; if (!img) return;
@@ -621,6 +623,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					} else {
 						overlay.style.background = 'rgba(0,0,0,0)';
 						setTimeout(function(){ if(overlay.parentNode)overlay.parentNode.removeChild(overlay); if(cv.parentNode)cv.parentNode.removeChild(cv); }, 500);
+						if (onDone) onDone();
 						return;
 					}
 					cv.style.opacity = alpha;
@@ -650,13 +653,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				// 转换为游戏像素坐标（考虑视口偏移）
 				var ox = core.bigmap ? (core.bigmap.offsetX || 0) : 0;
 				var oy = core.bigmap ? (core.bigmap.offsetY || 0) : 0;
+				var gs = core.domStyle && core.domStyle.scale || 1;
 				var px = Math.round(tx * TILE + ox - (drawW - TILE) / 2);
 				var py = Math.round(ty * TILE + oy - (drawH - TILE) / 2);
 				// 动画canvas
 				var cv = document.createElement('canvas'); cv.width = drawW; cv.height = drawH;
 				cv.style.cssText = 'position:absolute;z-index:200;pointer-events:none;';
-				cv.style.left = px + 'px';
-				cv.style.top = py + 'px';
+				cv.style.left = Math.round(px * gs) + 'px';
+				cv.style.top = Math.round(py * gs) + 'px';
+				cv.style.width = Math.round(drawW * gs) + 'px';
+				cv.style.height = Math.round(drawH * gs) + 'px';
 				gd.appendChild(cv);
 				var ctx = cv.getContext('2d');
 				var frameIdx = 0;
@@ -790,7 +796,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		};
 		// 【东方星冥线】塔层全景滚动+雾效 (复刻 script126/127 配置)
 		// 全景: 纵向向上 3/8px/帧 = 15px/s; 雾: 右0.5/8 + 上1/8 px/帧 = 右2.5 + 上5 px/s, 200%放大 25%透明
-		var panoCv = null, fogCv = null;
 		var PANO_SPEED_Y = 15, FOG_SPEED_X = 2.5, FOG_SPEED_Y = 5;
 		function isTower(fid) { return fid && (fid.indexOf('f1_') === 0 || fid.indexOf('f3_') === 0); }
 		function bgTick() {
@@ -798,11 +803,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (!core.isPlaying() || !core.status.floorId || !core.dymCanvas) return;
 			var fid = core.status.floorId;
 			// --- 全景滚动层 (bg画布之下) ---
-			if (!panoCv) {
-				if (!core.dymCanvas.panoBg) core.createCanvas('panoBg', 0, 0, core._PX_, core._PY_, -1);
-				panoCv = core.dymCanvas.panoBg || null;
-				if (!panoCv) return;
-			}
+			// 每帧查 core.dymCanvas, 不缓存 (读档时 deleteAllCanvas 会清掉, 缓存引用指向已脱离DOM的旧canvas)
+			if (!core.dymCanvas.panoBg) core.createCanvas('panoBg', 0, 0, core._PX_, core._PY_, -1);
+			var panoCv = core.dymCanvas.panoBg;
+			if (!panoCv) return;
 			var pano = core.material.images.images['pano_' + fid + '.png'];
 			var w = core._PX_, h = core._PY_;
 			panoCv.clearRect(0, 0, w, h);
@@ -817,17 +821,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				panoCv.globalAlpha = 1;
 			}
 			// --- 雾层 (blocks之上, damage/动画之下: DOM插到#damage前) ---
-			if (!fogCv) {
-				if (!core.dymCanvas.panoFog) {
-					core.createCanvas('panoFog', 0, 0, core._PX_, core._PY_, '');
-					var fogEl = document.getElementById('panoFog');
-					var dmgEl = document.getElementById('damage');
-					if (fogEl && dmgEl && fogEl.parentNode === dmgEl.parentNode)
-						dmgEl.parentNode.insertBefore(fogEl, dmgEl);
-				}
-				fogCv = core.dymCanvas.panoFog || null;
-				if (!fogCv) return;
+			if (!core.dymCanvas.panoFog) {
+				core.createCanvas('panoFog', 0, 0, core._PX_, core._PY_, '');
+				var fogEl = document.getElementById('panoFog');
+				var dmgEl = document.getElementById('damage');
+				if (fogEl && dmgEl && fogEl.parentNode === dmgEl.parentNode)
+					dmgEl.parentNode.insertBefore(fogEl, dmgEl);
 			}
+			var fogCv = core.dymCanvas.panoFog;
+			if (!fogCv) return;
 			var fogName = fid.indexOf('f1_') === 0 ? 'fog_t1.png' : fid.indexOf('f3_') === 0 ? 'fog_t3.png' : null;
 			var fog = fogName && core.material.images.images[fogName];
 			fogCv.clearRect(0, 0, w, h);
@@ -1110,16 +1112,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					lastCal = cal;
 					calCv.clearRect(0, 0, core._PX_, core._PY_);
 					calCv.fillStyle = 'rgba(0,0,0,0.59)';
-					calCv.fillRect(6, 6, 148, 28);
+					calCv.fillRect(core._PX_ - 154, 6, 148, 28);
 					calCv.strokeStyle = 'rgba(255,215,0,0.71)';
 					calCv.lineWidth = 1;
-					calCv.strokeRect(6.5, 6.5, 147, 27);
+					calCv.strokeRect(core._PX_ - 153.5, 6.5, 147, 27);
 					calCv.font = 'bold 14px SimSun, "Microsoft YaHei", sans-serif';
 					calCv.textAlign = 'center';
 					calCv.fillStyle = 'rgba(0,0,0,0.63)';
-					calCv.fillText(cal, 6 + 74 + 1, 6 + 19 + 1);
+					calCv.fillText(cal, core._PX_ - 154 + 74 + 1, 6 + 19 + 1);
 					calCv.fillStyle = PHASES[pi][2];
-					calCv.fillText(cal, 6 + 74, 6 + 19);
+					calCv.fillText(cal, core._PX_ - 154 + 74, 6 + 19);
 					calCv.textAlign = 'left';
 				}
 			}
@@ -1194,24 +1196,85 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			c.clearRect(0, 0, PX, PY);
 			// HP已由左侧状态栏显示，迷你HUD只保留能量条
 			var topY = fid === 'f0_garden' ? 38 : 6;
-			// 【星冥线】楼层副标题（塔内显示，在能量条上方）
+			// 【星冥线】楼层副标题 + 能量条 → 右下角
+			var emax = core.getFlag('g_energy_max', 0);
+			if (inTower && emax > 0) {
+				var remain = Math.max(0, emax - core.getFlag('g_energy_used', 0));
+				pill(c, PX - 124, PY - 30, 116, 16, remain + '/' + emax, 'rgb(150,140,255)', remain / emax);
+			}
 			if (inTower) {
 				var sub = (core.status.thisMap || {}).subtitle || '';
 				if (sub) {
 					c.font = 'bold 12px "Microsoft YaHei", sans-serif';
-					// 描边文字
-					c.textAlign = 'left'; c.textBaseline = 'top';
+					// 描边文字（右下角）
+					c.textAlign = 'right'; c.textBaseline = 'bottom';
 					c.fillStyle = '#ccccff';
 					c.strokeStyle = '#000'; c.lineWidth = 2;
-					c.strokeText(sub, 8, topY);
-					c.fillText(sub, 8, topY);
+					c.strokeText(sub, PX - 10, PY - 34);
+					c.fillText(sub, PX - 10, PY - 34);
+				}
+				// 竖屏时左下角显示楼层层数
+				if (core.domStyle.isVertical) {
+					var floorId = core.status.floorId || '';
+					var parts = floorId.split('_');
+					var floorNum = '';
+					if (parts.length === 2 && /^f\d+$/.test(parts[0])) {
+						floorNum = (parseInt(parts[1]) + 1) + 'F';
+					} else {
+						floorNum = floorId;
+					}
+					c.font = 'bold 20px "Microsoft YaHei", sans-serif';
+					c.textAlign = 'left'; c.textBaseline = 'bottom';
+					var tw = c.measureText(floorNum).width;
+					// 半透明黑底
+					c.fillStyle = 'rgba(0,0,0,0.45)';
+					c.fillRect(4, PY - 30, tw + 12, 28);
+					// 描边 + 文字
+					c.strokeStyle = 'rgba(0,0,0,0.7)'; c.lineWidth = 3;
+					c.fillStyle = 'rgba(220,210,255,0.95)';
+					c.strokeText(floorNum, 10, PY - 8);
+					c.fillText(floorNum, 10, PY - 8);
 				}
 			}
-			var emax = core.getFlag('g_energy_max', 0);
-			if (inTower && emax > 0) {
-				var remain = Math.max(0, emax - core.getFlag('g_energy_used', 0));
-				pill(c, 6, topY + 20, 116, 16, remain + '/' + emax, 'rgb(150,140,255)', remain / emax);
-			}
+			// 【星冥线】宝石碎片进度条（仅塔层，顶部中央，符卡图标左侧）
+			if (inTower) (function() {
+				var imgs = core.material && core.material.images && core.material.images.images;
+				function drawIcon(name, x, y, size) {
+					var img = imgs && imgs[name];
+					if (img) c.drawImage(img, x, y, size, size);
+				}
+				function drawBar(x, y, w, h, n, fill) {
+					c.fillStyle = 'rgba(255,255,255,0.15)';
+					c.fillRect(x, y, w, h);
+					if (n > 0) {
+						c.fillStyle = fill;
+						c.fillRect(x, y, w * n / 6, h);
+					}
+					c.strokeStyle = 'rgba(255,255,255,0.3)';
+					c.lineWidth = 1;
+					c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+				}
+				var __h = core.status && core.status.hero || {}; var __rs = __h._rShard || 0, __bs = __h._bShard || 0, __gs = __h._gShard || 0;
+				if (core.domStyle.isVertical) {
+					var __w = 48, __h = 5, __is = 10;
+					var __bx = PX / 2 - __w / 2, __ix = __bx - __is - 2;
+					drawIcon('icon_rshard.png', __ix, 6, __is);
+					drawBar(__bx, 8, __w, __h, __rs, '#ff6666');
+					drawIcon('icon_bshard.png', __ix, 18, __is);
+					drawBar(__bx, 20, __w, __h, __bs, '#6666ff');
+					drawIcon('icon_gshard.png', __ix, 30, __is);
+					drawBar(__bx, 32, __w, __h, __gs, '#66cc66');
+				} else {
+					var __w = 48, __h = 4, __is = 8;
+					var __bx = PX / 2 - __w / 2, __ix = __bx - __is - 2;
+					drawIcon('icon_rshard.png', __ix, 4, __is);
+					drawBar(__bx, 6, __w, __h, __rs, '#ff6666');
+					drawIcon('icon_bshard.png', __ix, 16, __is);
+					drawBar(__bx, 18, __w, __h, __bs, '#6666ff');
+					drawIcon('icon_gshard.png', __ix, 28, __is);
+					drawBar(__bx, 30, __w, __h, __gs, '#66cc66');
+				}
+			})();
 			// 【东方星冥线】符卡图标（间隙翻倍，手机不易点错）
 			var scImgs = core.material && core.material.images && core.material.images.images;
 			if (scImgs && inTower) {
@@ -1226,14 +1289,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 符卡点击：直接在gameDraw上监听，用PX/PY坐标系，缩放无偏差
 			if (!scClickCv && gd) {
 				scClickCv = 1; // 标记已初始化
-				gd.addEventListener('mousedown', function(e) {
+				function spellClick(e) {
 					if (!core.isPlaying() || (core.status.event && core.status.event.id)) return;
 					var r = gd.getBoundingClientRect(), PX = core._PX_ || 672, PY = core._PY_ || 416;
 					var sx = PX / r.width, sy = PY / r.height;
-					var px = (e.clientX - r.left) * sx, py = (e.clientY - r.top) * sy;
+					var cx = e.clientX, cy = e.clientY;
+					if (cx == null && e.touches && e.touches[0]) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+					var px = (cx - r.left) * sx, py = (cy - r.top) * sy;
 					var scX = PX - 136, scY = 6, scW = 36, scH = 36, scGap = 12;
 					for (var i = 0; i < 3; i++) { var ix = scX + i * (scW + scGap); if (px >= ix && px <= ix + scW && py >= scY && py <= scY + scH) { e.stopPropagation(); e.preventDefault(); core.useSpellCard(i + 1); return; } }
-				}, true);
+				}
+				gd.addEventListener('mousedown', spellClick, true);
+				gd.addEventListener('touchstart', spellClick, {capture: true, passive: false});
 			}
 			}
 			requestAnimationFrame(tick);
@@ -1841,15 +1908,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		var bg2Canvas = createCanvas('bg2', 20);
 		var fg2Canvas = createCanvas('fg2', 63);
 		// 大地图适配
-		core.bigmap.canvas = ["bg2", "fg2", "bg", "event", "event2", "fg", "damage"];
+		core.bigmap.canvas = ["bg2", "fg2", "bg", "bg3", "event", "event2", "fg", "damage"];
 		core.initStatus.bg2maps = {};
 		core.initStatus.fg2maps = {};
+		core.initStatus.bg3maps = {};
 
 		if (main.mode == 'editor') {
 			/*插入编辑器的图层 不做此步新增图层无法在编辑器显示*/
 			// 编辑器图层覆盖优先级 eui > efg > fg(前景层) > event2(48*32图块的事件层) > event(事件层) > bg(背景层)
 			// 背景层2(bg2) 插入事件层(event)之前(即bg与event之间)
 			document.getElementById('mapEdit').insertBefore(bg2Canvas, document.getElementById('event'));
+			// 背景层3(bg3) 插入事件层(event)之前(即bg2与event之间)
+			document.getElementById('mapEdit').insertBefore(bg3Canvas, document.getElementById('event'));
 			// 前景层2(fg2) 插入编辑器前景(efg)之前(即fg之后)
 			document.getElementById('mapEdit').insertBefore(fg2Canvas, document.getElementById('ebm'));
 			// 原本有三个图层 从4开始添加
@@ -1859,8 +1929,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			editor.dom.bg2Ctx = core.canvas.bg2;
 			editor.dom.fg2c = core.canvas.fg2.canvas;
 			editor.dom.fg2Ctx = core.canvas.fg2;
-			editor.dom.maps.push('bg2map', 'fg2map');
-			editor.dom.canvas.push('bg2', 'fg2');
+			editor.dom.bg3c = core.canvas.bg3.canvas;
+			editor.dom.bg3Ctx = core.canvas.bg3;
+			editor.dom.maps.push('bg2map', 'fg2map', 'bg3map');
+			editor.dom.canvas.push('bg2', 'fg2', 'bg3');
 
 			// 创建编辑器上的按钮
 			var createCanvasBtn = function (name) {
@@ -1924,7 +1996,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		var _loadFloor_doNotCopy = core.maps._loadFloor_doNotCopy;
 		core.maps._loadFloor_doNotCopy = function () {
-			return ["bg2map", "fg2map"].concat(_loadFloor_doNotCopy());
+			return ["bg2map", "fg2map", "bg3map"].concat(_loadFloor_doNotCopy());
 		}
 		////// 绘制背景和前景层 //////
 		core.maps._drawBg_draw = function (floorId, toDrawCtx, cacheCtx, config) {
@@ -3014,6 +3086,152 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 
+		// ========== 宝石血瓶左下角显示数值 ==========
+		// 默认开启；core.setFlag('itemDetail', false)可关闭，core.setFlag('itemDetail', true)重开+updateDamage()
+		var _itemDetailOn = true;
+		var _ignoreItems = ['superPotion', 'redShard', 'blueShard', 'greenShard'];
+		var _getItemDetail = function(floorId) {
+			floorId = floorId || core.status.floorId;
+			// flag=false可关闭，闭包默认true（hero未初始化时setFlag无效）
+			if (!core.status.thisMap) return;
+			if (core.getFlag('itemDetail') === false) return;
+			if (!_itemDetailOn && !core.getFlag('itemDetail')) return;
+			var blocks = core.status.maps[floorId].blocks;
+			if (!blocks) return;
+			var beforeRatio = core.status.thisMap.ratio;
+			core.status.thisMap.ratio = core.status.maps[floorId].ratio;
+			var diff = {};
+			var beforeHero = core.status.hero;
+			var hero = core.clone(beforeHero);
+			var origFlags = hero.flags;
+			var handler = {
+				set: function(target, key, v) {
+					diff[key] = v - (target[key] || 0);
+					if (!diff[key]) diff[key] = void 0;
+					return true;
+				}
+			};
+			core.status.hero = new Proxy(hero, handler);
+			var blocks = core.status.maps[floorId].blocks;
+			for (var i = 0; i < blocks.length; i++) {
+				var block = blocks[i];
+				if ((block.event.cls !== 'items' && block.event.cls !== 'constants') || block.disable) continue;
+				var id = block.event.id;
+				if (!id || _ignoreItems.indexOf(id) >= 0) continue;
+				var x = block.x, y = block.y;
+				// v2优化，只处理视口范围
+				if (core.bigmap.v2) {
+					if (x < core.bigmap.posX - core.bigmap.extend ||
+						x > core.bigmap.posX + core._WIDTH_ + core.bigmap.extend ||
+						y < core.bigmap.posY - core.bigmap.extend ||
+						y > core.bigmap.posY + core._HEIGHT_ + core.bigmap.extend) {
+						continue;
+					}
+				}
+				var item = core.material.items[id];
+				if (!item) continue;
+				diff = {};
+				// 装备：直接读equip.value
+				if (item.cls === 'equips' && item.equip) {
+					var eqVal = item.equip.value || {};
+					var eqPer = item.equip.percentage || {};
+					for (var name in eqVal) {
+						if (eqVal[name]) diff[name] = eqVal[name];
+					}
+					for (var name in eqPer) {
+						if (eqPer[name]) diff[name + 'per'] = eqPer[name] + '%';
+					}
+					_drawItemDetail(diff, x, y);
+					continue;
+				}
+				// 普通道具：通过Proxy捕获效果
+				if (!item.itemEffect) continue;
+				core.setFlag('__statistics__', true);
+				try {
+					eval(item.itemEffect);
+				} catch (e) {}
+				core.removeFlag('__statistics__');
+				_drawItemDetail(diff, x, y);
+			}
+			core.status.thisMap.ratio = beforeRatio;
+			core.status.hero = beforeHero;
+			window.hero = beforeHero;
+			// 恢复flags引用
+			if (beforeHero) beforeHero.flags = origFlags;
+		};
+		var _drawItemDetail = function(diff, x, y) {
+			var px = 32 * x + 2;
+			var py = 32 * y + 30;
+			var i = 0;
+			for (var name in diff) {
+				if (!diff[name]) continue;
+				var content = diff[name];
+				if (typeof content === 'number') content = core.formatBigNumber(content, true);
+				var color = '#fff';
+				switch (name) {
+						case 'atk': case 'atkper': color = '#FF7A7A'; break;
+						case 'def': case 'defper': color = '#00E6F1'; break;
+						case 'mdef': case 'mdefper': color = '#6EFF83'; break;
+						case 'hp': color = '#A4FF00'; break;
+						case 'hpmax': case 'hpmaxper': color = '#F9FF00'; break;
+						case 'mana': color = '#c66'; break;
+						case 'exp': color = '#C77DFF'; break;
+						case 'money': color = '#FFD700'; break;
+					}
+				core.status.damage.data.push({
+					text: content,
+					px: px,
+					py: py - 10 * i,
+					color: color
+				});
+				i++;
+			}
+		};
+		// 钩子：在_updateDamage_damage之后追加道具详情
+		var __orig_damage = control.prototype._updateDamage_damage;
+		control.prototype._updateDamage_damage = function(floorId, onMap) {
+			__orig_damage.apply(this, arguments);
+			_getItemDetail(floorId);
+		};
+		// 系统设置集成：在"显示设置"中添加 "道具详情" 开关
+		var __drawSwitchs_display = ui.prototype._drawSwitchs_display;
+		ui.prototype._drawSwitchs_display = function() {
+			core.status.event.id = 'switchs-display';
+			var choices = [
+				" <   放缩：" + Math.max(core.domStyle.scale, 1) + "x   > ",
+				"高清画面： " + (core.flags.enableHDCanvas ? "[ON]" : "[OFF]"),
+				"定点怪显： " + (core.flags.enableEnemyPoint ? "[ON]" : "[OFF]"),
+				"怪物显伤： " + (core.flags.displayEnemyDamage ? "[ON]" : "[OFF]"),
+				"临界显伤： " + (core.flags.displayCritical ? "[ON]" : "[OFF]"),
+				"领域显伤： " + (core.flags.displayExtraDamage ? "[ON]" : "[OFF]"),
+				"领域模式： " + (core.flags.extraDamageType == 2 ? "[最简]" : core.flags.extraDamageType == 1 ? "[半透明]" : "[完整]"),
+				"道具详情： " + (_itemDetailOn && core.getFlag('itemDetail') !== false ? "[ON]" : "[OFF]"),
+				"自动放缩： " + (core.getLocalStorage('autoScale') ? "[ON]" : "[OFF]"),
+				"返回上一级"
+			];
+			this.drawChoices(null, choices);
+		};
+		var __clickSwitchs_display = actions.prototype._clickSwitchs_display;
+		actions.prototype._clickSwitchs_display = function(x, y) {
+			var choices = core.status.event.ui.choices;
+			var top = this._getChoicesTopIndex(choices.length);
+			var sel = y - top;
+			if (sel === 7) {
+				if (this._out(x)) return;
+				core.status.event.selection = 7;
+				core.playSound('确定');
+				_itemDetailOn = !_itemDetailOn;
+				if (_itemDetailOn) core.setFlag('itemDetail', true);
+				else core.setFlag('itemDetail', false);
+				core.updateDamage();
+				ui.prototype._drawSwitchs_display.call(core.ui);
+				return;
+			}
+			if (sel > 7) y -= 1;
+			__clickSwitchs_display.call(this, x, y);
+		};
+		// ========== 宝石血瓶显示数值 END ==========
+
 		window.Sprite = Sprite;
 	},
 	"hotReload": function () {
@@ -3278,6 +3496,1963 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					});
 				}, 1000);
 			}
+		// 【东方星冥线】夹击光效插件 (betweenAttack)
+		core.plugin._betCanvas = document.getElementById('bg3');
+		if (core.plugin._betCanvas) {
+			core.plugin._betCtx = core.plugin._betCanvas.getContext('2d');
+		}
+		core.plugin._drawBetweenAttack = function (x, y, pos, frame) {
+			var ctx = core.plugin._betCtx;
+			if (!ctx) return;
+			var ix = x * 32, iy = y * 32;
+			// 左右夹击：使用 light1.png（横光束，68宽，每帧63高）
+			if (pos[0]) {
+				var f = ((frame - 1) % 2); // light1.png 有 2 帧
+				ctx.drawImage(core.material.images.images["light1.png"], 0, f * 63, 68, 63, ix - 18, iy - 2, 68, 63);
+			}
+			// 上下夹击：使用 light.png（竖光束，4帧 32×68）
+			if (pos[1]) {
+				ctx.drawImage(core.material.images.images["light.png"], 32 * (frame - 1), 0, 32, 68, ix, iy - 18, 32, 68);
+			}
+		};
+
+		core.registerAnimationFrame("betweenAttack", true, function (timestamp) {
+			var ctx = core.plugin._betCtx;
+			if (!ctx) return;
+			if (!core.flags.betweenAttackData) {
+				ctx.clearRect(0, 0, core.__PIXELS__, core.__PIXELS__);
+				return;
+			}
+			var time = core.events._timestamp;
+			if (time && timestamp - time < 400) return;
+			ctx.clearRect(0, 0, core.__PIXELS__, core.__PIXELS__);
+			core.events._timestamp = timestamp;
+			var data = core.flags.betweenAttackData || {};
+			core.flags._frame = core.flags._frame || 1;
+			var frame = core.flags._frame;
+			for (var loc in data) {
+				var l = loc.split(",");
+				var x = parseInt(l[0]), y = parseInt(l[1]);
+				core.plugin._drawBetweenAttack(x, y, data[loc], frame);
+			}
+			core.flags._frame = frame + 1;
+			if (core.flags._frame > 4) core.flags._frame = 1;
+		});
+
+		var _origin_extraDamage = core.control._updateDamage_extraDamage;
+		core.control._updateDamage_extraDamage = function (floorId, onMap) {
+			core.flags.betweenAttackData = null;
+			if (!core.flags.useBetweenLight) return _origin_extraDamage.call(core.control, floorId, onMap);
+			core.status.damage.extraData = [];
+			if (!core.flags.displayExtraDamage) return;
+			var width = core.floors[floorId].width, height = core.floors[floorId].height;
+			var startX = onMap && core.bigmap.v2 ? Math.max(0, core.bigmap.posX - core.bigmap.extend) : 0;
+			var endX = onMap && core.bigmap.v2 ? Math.min(width, core.bigmap.posX + core.__SIZE__ + core.bigmap.extend + 1) : width;
+			var startY = onMap && core.bigmap.v2 ? Math.max(0, core.bigmap.posY - core.bigmap.extend) : 0;
+			var endY = onMap && core.bigmap.v2 ? Math.min(height, core.bigmap.posY + core.__SIZE__ + core.bigmap.extend + 1) : height;
+			var find = function (x, y) {
+				return core.status.damage.extraData.find(function (d) { return d.x == x && d.y == y; });
+			};
+			var getEnemy = function (x, y) {
+				var id = core.getBlockId(x, y, floorId);
+				var e = core.material.enemys[id];
+				if (main.mode == "editor") e = core.enemys.enemys[id];
+				return e;
+			};
+			for (var x = startX; x < endX; x++) {
+				for (var y = startY; y < endY; y++) {
+					var alpha = 1;
+					if (core.noPass(x, y, floorId)) {
+						if (core.flags.extraDamageType == 2) alpha = 0;
+						else if (core.flags.extraDamageType == 1) alpha = 0.6;
+					}
+					var loc = x + "," + y;
+					var damage = core.status.checkBlock.damage[loc] || 0;
+					if (damage > 0) {
+						damage = isFinite(damage) ? core.formatBigNumber(damage, true) : '???';
+						var left = false, top = false;
+						var e_left = getEnemy(x - 1, y), e_right = getEnemy(x + 1, y);
+						var e_bottom = getEnemy(x, y - 1), e_top = getEnemy(x, y + 1);
+						if (core.hasSpecial(e_left, 16) && core.hasSpecial(e_right, 16) && e_left.id == e_right.id)
+							left = true;
+						if (core.hasSpecial(e_bottom, 16) && core.hasSpecial(e_top, 16) && e_bottom.id == e_top.id)
+							top = true;
+						core.flags.betweenAttackData = core.flags.betweenAttackData || {};
+						if (core.flags.betweenAttackData[x + "," + y]) continue;
+						var data = [left, top];
+						var px = 32 * x + 16, py = 32 * (y + 1) - 14;
+						if (left || top) {
+							core.flags.betweenAttackData[x + "," + y] = data;
+							// 夹击伤害显示在中间空地
+							core.status.damage.extraData.push({ text: damage, px: 32 * x + 16, py: 32 * (y + 1) - 14, color: '#ffaa33', alpha: alpha });
+						}
+						core.plugin._drawBetweenAttack(x, y, data, 1);
+						if (!(left || top)) {
+							core.status.damage.extraData.push({ text: damage, px: 32 * x + 16, py: 32 * (y + 1) - 14, color: '#ffaa33', alpha: alpha });
+						}
+					} else {
+						if (core.status.checkBlock.ambush[x + "," + y]) {
+							core.status.damage.extraData.push({ text: '!', px: 32 * x + 16, py: 32 * (y + 1) - 14, color: '#ffaa33', alpha: alpha });
+						}
+					}
+				}
+			}
+		};
 		})();
 	}
 }
+
+// ========== Sprite 插件 (基于canvas的sprite化，摘编整理自万宁魔塔) ==========
+// 用法: const s = new Sprite(x, y, w, h, z, 'game', 'mySprite');
+//       s.on('click', (px, py) => { ... });
+//       s.setCss('box-shadow: 0 0 10px black');
+//       s.destroy();
+
+const _sprites = {};
+
+class Sprite {
+	constructor(x, y, w, h, z, reference, name) {
+		this.x = x;
+		this.y = y;
+		this.width = w;
+		this.height = h;
+		this.zIndex = z;
+		this.reference = reference;
+		this.canvas = null;
+		this.context = null;
+		this.count = 0;
+		this.name = name;
+		this._keyListeners = [];
+		this.init();
+	}
+
+	init() {
+		var name = this.name || '_sprite_' + Sprite._count;
+		this.name = name;
+		if (this.reference === 'window') {
+			var canvas = document.createElement('canvas');
+			this.canvas = canvas;
+			this.context = canvas.getContext('2d');
+			canvas.width = this.width;
+			canvas.height = this.height;
+			canvas.style.width = this.width + 'px';
+			canvas.style.height = this.height + 'px';
+			canvas.style.position = 'absolute';
+			canvas.style.top = this.y + 'px';
+			canvas.style.left = this.x + 'px';
+			canvas.style.zIndex = String(this.zIndex);
+			document.body.appendChild(canvas);
+		} else {
+			this.context = core.createCanvas(name, this.x, this.y, this.width, this.height, this.zIndex);
+			this.canvas = this.context.canvas;
+			this.count = Sprite._count;
+			this.canvas.style.pointerEvents = 'auto';
+		}
+		Sprite._count++;
+		_sprites[this.name] = this;
+	}
+
+	// 设置CSS特效，支持多行
+	setCss(css) {
+		css = css.replace(/\n/g, ';').replace(/;;+/g, ';');
+		var effects = css.split(';');
+		var canvas = this.canvas;
+		for (var i = 0; i < effects.length; i++) {
+			var v = effects[i].trim();
+			if (!v) continue;
+			var colon = v.indexOf(':');
+			if (colon < 0) continue;
+			var name = v.substring(0, colon).trim();
+			var value = v.substring(colon + 1).trim();
+			// CSS属性名转camelCase
+			name = name.split('-').reduce(function(pre, curr, idx) {
+				if (idx === 0) return curr;
+				return pre + curr.charAt(0).toUpperCase() + curr.slice(1);
+			}, '');
+			if (name in canvas.style)
+				canvas.style[name] = value;
+		}
+		return this;
+	}
+
+	move(x, y, isDelta) {
+		if (isDelta) {
+			if (x !== undefined && x !== null) this.x += x;
+			if (y !== undefined && y !== null) this.y += y;
+		} else {
+			if (x !== undefined && x !== null) this.x = x;
+			if (y !== undefined && y !== null) this.y = y;
+		}
+		if (this.reference === 'window') {
+			var ele = this.canvas;
+			ele.style.left = this.x + 'px';
+			ele.style.top = this.y + 'px';
+		} else {
+			core.relocateCanvas(this.context, this.x, this.y);
+		}
+		return this;
+	}
+
+	resize(w, h, styleOnly) {
+		if (w !== undefined && w !== null) this.width = w;
+		if (h !== undefined && h !== null) this.height = h;
+		if (this.reference === 'window') {
+			var ele = this.canvas;
+			ele.style.width = w + 'px';
+			ele.style.height = h + 'px';
+			if (!styleOnly) {
+				ele.width = w;
+				ele.height = h;
+			}
+		} else {
+			core.resizeCanvas(this.context, w, h, styleOnly);
+		}
+		return this;
+	}
+
+	rotate(angle, cx, cy) {
+		if (this.reference === 'window') {
+			var left = this.x, top = this.y;
+			this.canvas.style.transformOrigin = (cx - left) + 'px ' + (cy - top) + 'px';
+			if (angle === 0) {
+				this.canvas.style.transform = '';
+			} else {
+				this.canvas.style.transform = 'rotate(' + angle + 'deg)';
+			}
+		} else {
+			core.rotateCanvas(this.context, angle, cx, cy);
+		}
+		return this;
+	}
+
+	// 擦除指定区域，不传参数则清空整个画布
+	clear(x, y, w, h) {
+		if (x === undefined) {
+			this.context.clearRect(0, 0, this.width, this.height);
+		} else {
+			this.context.clearRect(x, y, w || this.width, h || this.height);
+		}
+		return this;
+	}
+
+	destroy() {
+		if (this.reference === 'window') {
+			if (this.canvas && this.canvas.parentNode)
+				document.body.removeChild(this.canvas);
+		} else {
+			core.deleteCanvas(this.name);
+		}
+		for (var i = 0; i < this._keyListeners.length; i++) {
+			var kv = this._keyListeners[i];
+			document.removeEventListener(kv[0], kv[1]);
+		}
+		_sprites[this.name] = undefined;
+	}
+
+	// 事件监听，坐标自动换算为相对sprite左上角
+	on(type, handler) {
+		if (this.reference !== 'game')
+			throw new Error('Sprite.on() 仅支持 reference="game"');
+		var mouseEvents = [
+			'auxclick', 'click', 'contextmenu', 'dblclick', 'mousedown', 'mouseup',
+			'mouseenter', 'mouseleave', 'mousemove', 'mouseout', 'mouseover'
+		];
+		var keyEvents = ['keydown', 'keypress', 'keyup'];
+		var touchEvents = ['touchstart', 'touchend', 'touchcancel', 'touchmove'];
+		var self = this;
+		if (mouseEvents.indexOf(type) >= 0) {
+			this.addEventListener(type, function(e) {
+				var px = e.offsetX / core.domStyle.scale;
+				var py = e.offsetY / core.domStyle.scale;
+				handler(px, py);
+			});
+		} else if (type === 'wheel') {
+			this.addEventListener('wheel', function(e) {
+				handler(e.deltaY, e.deltaX, e.deltaZ);
+			});
+		} else if (keyEvents.indexOf(type) >= 0) {
+			var listener = function(e) {
+				handler(e.key, e.keyCode, e.altKey, e.ctrlKey, e.shiftKey);
+			};
+			this._keyListeners.push([type, listener]);
+			document.addEventListener(type, listener);
+		} else if (touchEvents.indexOf(type) >= 0) {
+			this.addEventListener(type, function(e) {
+				var touches = e.touches;
+				var locs = [];
+				for (var i = 0; i < touches.length; i++) {
+					var t = touches[i];
+					var loc = core.actions._getClickLoc(t.clientX, t.clientY);
+					locs.push([loc.x / core.domStyle.scale, loc.y / core.domStyle.scale]);
+				}
+				handler.apply(null, locs);
+			});
+		}
+	}
+
+	addEventListener() {
+		this.canvas.addEventListener.apply(this.canvas, arguments);
+	}
+
+	removeEventListener() {
+		this.canvas.removeEventListener.apply(this.canvas, arguments);
+	}
+}
+
+Sprite._count = 0;
+
+// 全局获取sprite
+window.getSprite = function(name) {
+	var s = _sprites[name];
+	if (!s) throw new Error('Sprite "' + name + '" 不存在');
+	return s;
+};
+window.Sprite = Sprite;
+
+// ==================== 功能函数集 (utils) ====================
+// 使用方式：const { has, slide, ofDir } = core.plugin.utils;
+
+var _utilsPluginFn = function () {
+
+// 兜底：如果 core 尚未定义，注册到 plugins 对象延迟执行
+if (typeof core === 'undefined') {
+    plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1["utils"] = _utilsPluginFn;
+    return;
+}
+
+/**
+ * 滑动数组，使数组元素平移若干项（会修改原数组）
+ * @example slide([1, 2, 3], -1); // [2, 3, 1]
+ * @param {any[]} arr 需要滑动的数组
+ * @param {number} delta 滑动的项数，正负均可
+ */
+function slide(arr, delta) {
+    if (delta === 0) return arr;
+    delta %= arr.length;
+    if (delta > 0) {
+        arr.unshift.apply(arr, arr.splice(arr.length - delta, delta));
+        return arr;
+    }
+    if (delta < 0) {
+        arr.push.apply(arr, arr.splice(0, -delta));
+        return arr;
+    }
+}
+
+/**
+ * 获取一个方向的反方向
+ * @example backDir('up'); // 'down'
+ * @param {string} dir 方向
+ */
+function backDir(dir) {
+    var map = {
+        up: 'down', down: 'up',
+        left: 'right', right: 'left',
+        leftup: 'rightdown', leftdown: 'rightup',
+        rightdown: 'leftup', rightup: 'leftdown'
+    };
+    if (!(dir in map)) {
+        throw new TypeError('Wrong dir is delivered when getting back direction.');
+    }
+    return map[dir];
+}
+
+/**
+ * 判断一个值是否不是 undefined 和 null
+ * @example has(0); // true
+ * @example has(null); // false
+ */
+function has(v) {
+    return v !== null && v !== void 0;
+}
+
+/**
+ * 解析 CSS 字符串为对象（camelCase key）
+ * @example parseCss('background-color: cyan; cursor: pointer');
+ * // { backgroundColor: 'cyan', cursor: 'pointer' }
+ */
+function parseCss(css) {
+    var res = {};
+    var styles = css.split(';');
+    for (var i = 0; i < styles.length; i++) {
+        var one = styles[i];
+        var colonIdx = one.indexOf(':');
+        if (colonIdx === -1) continue;
+        var key = one.slice(0, colonIdx).trim();
+        var data = one.slice(colonIdx + 1).trim();
+        if (!key) continue;
+        var cssKey = key.replace(/-([a-z])/g, function (str, $1) { return $1.toUpperCase(); });
+        res[cssKey] = data;
+    }
+    return res;
+}
+
+/**
+ * 等待一段时间，需在 async function 中使用
+ * @example await sleep(500); // 等待 500 毫秒
+ */
+async function sleep(time) {
+    return new Promise(function (res) { setTimeout(res, time); });
+}
+
+/**
+ * 在两帧后执行回调
+ * @example nextFrame(function () { console.log(1); });
+ */
+function nextFrame(cb) {
+    requestAnimationFrame(function () {
+        requestAnimationFrame(cb);
+    });
+}
+
+/**
+ * HSL 转 RGB（内部辅助）
+ */
+function hslToRgb(h, s, l) {
+    if (s === 0) {
+        var g = Math.round(l * 255);
+        return [g, g, g];
+    }
+    function hue2rgb(p, q, t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+    }
+    var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    var p = 2 * l - q;
+    return [
+        Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+        Math.round(hue2rgb(p, q, h) * 255),
+        Math.round(hue2rgb(p, q, h - 1 / 3) * 255)
+    ];
+}
+
+// CSS 命名颜色表
+var cssColors = {
+    black: '#000000', silver: '#c0c0c0', gray: '#808080', white: '#ffffff',
+    maroon: '#800000', red: '#ff0000', purple: '#800080', fuchsia: '#ff00ff',
+    green: '#008000', lime: '#00ff00', olive: '#808000', yellow: '#ffff00',
+    navy: '#000080', blue: '#0000ff', teal: '#008080', aqua: '#00ffff',
+    orange: '#ffa500', aliceblue: '#f0f8ff', antiquewhite: '#faebd7',
+    aquamarine: '#7fffd4', azure: '#f0ffff', beige: '#f5f5dc',
+    bisque: '#ffe4c4', blanchedalmond: '#ffebcd', blueviolet: '#8a2be2',
+    brown: '#a52a2a', burlywood: '#deb887', cadetblue: '#5f9ea0',
+    chartreuse: '#7fff00', chocolate: '#d2691e', coral: '#ff7f50',
+    cornflowerblue: '#6495ed', cornsilk: '#fff8dc', crimson: '#dc143c',
+    cyan: '#00ffff', darkblue: '#00008b', darkcyan: '#008b8b',
+    darkgoldenrod: '#b8860b', darkgray: '#a9a9a9', darkgreen: '#006400',
+    darkgrey: '#a9a9a9', darkkhaki: '#bdb76b', darkmagenta: '#8b008b',
+    darkolivegreen: '#556b2f', darkorange: '#ff8c00', darkorchid: '#9932cc',
+    darkred: '#8b0000', darksalmon: '#e9967a', darkseagreen: '#8fbc8f',
+    darkslateblue: '#483d8b', darkslategray: '#2f4f4f', darkslategrey: '#2f4f4f',
+    darkturquoise: '#00ced1', darkviolet: '#9400d3', deeppink: '#ff1493',
+    deepskyblue: '#00bfff', dimgray: '#696969', dimgrey: '#696969',
+    dodgerblue: '#1e90ff', firebrick: '#b22222', floralwhite: '#fffaf0',
+    forestgreen: '#228b22', gainsboro: '#dcdcdc', ghostwhite: '#f8f8ff',
+    gold: '#ffd700', goldenrod: '#daa520', greenyellow: '#adff2f',
+    grey: '#808080', honeydew: '#f0fff0', hotpink: '#ff69b4',
+    indianred: '#cd5c5c', indigo: '#4b0082', ivory: '#fffff0',
+    khaki: '#f0e68c', lavender: '#e6e6fa', lavenderblush: '#fff0f5',
+    lawngreen: '#7cfc00', lemonchiffon: '#fffacd', lightblue: '#add8e6',
+    lightcoral: '#f08080', lightcyan: '#e0ffff', lightgoldenrodyellow: '#fafad2',
+    lightgray: '#d3d3d3', lightgreen: '#90ee90', lightgrey: '#d3d3d3',
+    lightpink: '#ffb6c1', lightsalmon: '#ffa07a', lightseagreen: '#20b2aa',
+    lightskyblue: '#87cefa', lightslategray: '#778899', lightslategrey: '#778899',
+    lightsteelblue: '#b0c4de', lightyellow: '#ffffe0', limegreen: '#32cd32',
+    linen: '#faf0e6', magenta: '#ff00ff', mediumaquamarine: '#66cdaa',
+    mediumblue: '#0000cd', mediumorchid: '#ba55d3', mediumpurple: '#9370db',
+    mediumseagreen: '#3cb371', mediumslateblue: '#7b68ee',
+    mediumspringgreen: '#00fa9a', mediumturquoise: '#48d1cc',
+    mediumvioletred: '#c71585', midnightblue: '#191970', mintcream: '#f5fffa',
+    mistyrose: '#ffe4e1', moccasin: '#ffe4b5', navajowhite: '#ffdead',
+    oldlace: '#fdf5e6', olivedrab: '#6b8e23', orangered: '#ff4500',
+    orchid: '#da70d6', palegoldenrod: '#eee8aa', palegreen: '#98fb98',
+    paleturquoise: '#afeeee', palevioletred: '#db7093', papayawhip: '#ffefd5',
+    peachpuff: '#ffdab9', peru: '#cd853f', pink: '#ffc0cb', plum: '#dda0dd',
+    powderblue: '#b0e0e6', rosybrown: '#bc8f8f', royalblue: '#4169e1',
+    saddlebrown: '#8b4513', salmon: '#fa8072', sandybrown: '#f4a460',
+    seagreen: '#2e8b57', seashell: '#fff5ee', sienna: '#a0522d',
+    skyblue: '#87ceeb', slateblue: '#6a5acd', slategray: '#708090',
+    slategrey: '#708090', snow: '#fffafa', springgreen: '#00ff7f',
+    steelblue: '#4682b4', tan: '#d2b48c', thistle: '#d8bfd8',
+    tomato: '#ff6347', turquoise: '#40e0d0', violet: '#ee82ee',
+    wheat: '#f5deb3', whitesmoke: '#f5f5f5', yellowgreen: '#9acd32',
+    transparent: '#0000'
+};
+
+/**
+ * 将 CSS 颜色解析为 RGBA 数组 [r, g, b, a?]
+ * 支持：#RGB #RGBA #RRGGBB #RRGGBBAA rgb() rgba() hsl() hsla() 命名颜色
+ * @example parseColor('#fff'); // [255, 255, 255]
+ * @example parseColor('rgba(170,230,13,0.2)'); // [170, 230, 13, 0.2]
+ * @example parseColor('cyan'); // [0, 255, 255]
+ */
+function parseColor(color) {
+    if (color.startsWith('rgb')) {
+        var l = color.indexOf('a') >= 0;
+        var match = color.match(/rgba?\([\d\,\s\.%]+\)/);
+        if (!has(match)) throw new Error('Invalid color is delivered!');
+        return match[0]
+            .slice(l ? 5 : 4, -1)
+            .split(',')
+            .map(function (v, i) {
+                var vv = v.trim();
+                if (vv.indexOf('%') >= 0) {
+                    if (i === 3) return parseInt(vv, 10) / 100;
+                    return (parseInt(vv, 10) * 255) / 100;
+                }
+                return parseFloat(vv);
+            })
+            .slice(0, l ? 4 : 3);
+    }
+    if (color[0] === '#') {
+        var content = color.slice(1);
+        if ([3, 4, 6, 8].indexOf(content.length) === -1)
+            throw new Error('Invalid color is delivered!');
+        if (content.length <= 4) {
+            var res = content.split('').map(function (v) {
+                return parseInt('0x' + v + v, 16);
+            });
+            if (res.length === 4) res[3] /= 255;
+            return res;
+        }
+        var res = [];
+        for (var i = 0; i < content.length; i += 2) {
+            res.push(parseInt('0x' + content[i] + content[i + 1], 16));
+        }
+        if (res.length === 4) res[3] /= 255;
+        return res;
+    }
+    if (color.startsWith('hsl')) {
+        var l2 = color.indexOf('a') >= 0;
+        var match2 = color.match(/hsla?\([\d\,\s\.%]+\)/);
+        if (!has(match2)) throw new Error('Invalid color is delivered!');
+        var hsl = match2[0]
+            .slice(l2 ? 5 : 4, -1)
+            .split(',')
+            .map(function (v) {
+                var vv = v.trim();
+                if (vv.indexOf('%') >= 0) return parseInt(vv, 10) / 100;
+                return parseFloat(vv);
+            });
+        // CSS HSL 色相是度数(0-360)，hslToRgb 期望 0-1
+        hsl[0] = (hsl[0] % 360) / 360;
+        var rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
+        return l2 ? rgb.concat([hsl[3]]) : rgb;
+    }
+    // 命名颜色
+    var hex = cssColors[color];
+    if (!has(hex)) throw new Error('Invalid color is delivered!');
+    return parseColor(hex);
+}
+
+/**
+ * 确保变量是数组，不是则包装为数组
+ * @example ensureArray(1); // [1]
+ * @example ensureArray([1, 2]); // [1, 2]
+ */
+function ensureArray(arr) {
+    return arr instanceof Array ? arr : [arr];
+}
+
+/**
+ * 返回坐标 (x, y) 向 dir 方向移动 d 格后的坐标
+ * @example ofDir(7, 7, 'left'); // [6, 7]
+ * @example ofDir(10, 8, 'leftup', 5); // [5, 3]
+ */
+function ofDir(x, y, dir, d) {
+    if (d === void 0) d = 1;
+    var scan = core.utils.scan2[dir];
+    return [x + scan.x * d, y + scan.y * d];
+}
+
+// 注册到 core.plugin.utils
+if (core.plugin.utils) {
+    throw new ReferenceError("core.plugin 上已有 'utils' 属性，功能函数插件无法注册！");
+}
+core.plugin.utils = {
+    has: has,
+    slide: slide,
+    backDir: backDir,
+    parseCss: parseCss,
+    sleep: sleep,
+    nextFrame: nextFrame,
+    parseColor: parseColor,
+    hslToRgb: hslToRgb,
+    ensureArray: ensureArray,
+    ofDir: ofDir
+};
+
+// ==================== 范围判断 (range) ====================
+// 使用方式：const { Range } = core.plugin.range;
+// d 统一为边长，d=5 表示 5×5 范围（中心 ± floor(d/2)）
+
+class Range {
+    constructor(collection) {
+        this.collection = collection;
+        this.cache = {};
+    }
+
+    /**
+     * 扫描 collection 中在范围内的物品
+     * @param {string} type 范围类型
+     * @param {*} data 范围数据
+     * @returns 在范围内的物品列表
+     */
+    scan(type, data) {
+        var t = Range.rangeType[type];
+        if (!t) {
+            throw new Error("Unknown range type: " + type);
+        }
+        return t.scan(this, data);
+    }
+
+    inRange(type, data, item) {
+        var t = Range.rangeType[type];
+        if (!t) {
+            throw new Error("Unknown range type: " + type);
+        }
+        return t.inRange(this, data, item);
+    }
+
+    clearCache() {
+        this.cache = {};
+    }
+}
+
+Range.rangeType = {};
+Range.registerRangeType = function (type, scan, inRange) {
+    Range.rangeType[type] = { scan: scan, inRange: inRange };
+};
+
+// ----- 默认的范围类型 -----
+
+// 方形区域：d 为边长（如 d=5 → 5×5，半径 = floor(d/2)）
+Range.registerRangeType(
+    'square',
+    function (col, _a) {
+        var x = _a.x, y = _a.y, d = _a.d;
+        var cache = col.cache.square || (col.cache.square = {});
+        var index = x + "," + y + "," + d;
+        if (index in cache) return cache[index];
+        var list = col.collection.list;
+        var r = Math.floor(d / 2);
+
+        return (cache[index] = list.filter(function (v) {
+            return (
+                has(v.x) &&
+                has(v.y) &&
+                Math.abs(v.x - x) <= r &&
+                Math.abs(v.y - y) <= r
+            );
+        }));
+    },
+    function (col, _a, item) {
+        var x = _a.x, y = _a.y, d = _a.d;
+        var r = Math.floor(d / 2);
+        return (
+            has(item.x) &&
+            has(item.y) &&
+            Math.abs(item.x - x) <= r &&
+            Math.abs(item.y - y) <= r
+        );
+    }
+);
+
+if ('range' in core.plugin) {
+    throw new ReferenceError("core.plugin 上已存在名为 range 的属性！");
+}
+core.plugin.range = { Range: Range };
+
+};
+_utilsPluginFn();
+
+// ==================== 动画插件 (mutate-animate) ====================
+// github: https://github.com/unanmed/animate
+// npm: mutate-animate
+// 提供缓动动画、路径动画、渐变过渡等功能
+var _animatePluginFn = function () {
+
+// 兜底：如果 core 尚未定义，注册到 plugins 对象延迟执行
+if (typeof core === 'undefined') {
+    plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1["animate"] = _animatePluginFn;
+    return;
+}
+
+if (main.replayChecking) return core.plugin.animate = {};
+
+var M = Object.defineProperty;
+var E = (n, i, t) => i in n ? M(n, i, { enumerable: !0, configurable: !0, writable: !0, value: t }) : n[i] = t;
+var o = (n, i, t) => (E(n, typeof i != "symbol" ? i + "" : i, t), t);
+let w = [];
+const k = (n) => {
+  for (const i of w)
+    if (i.status === "running")
+      try {
+        for (const t of i.funcs)
+          t(n - i.startTime);
+      } catch (t) {
+        i.destroy(), console.error(t);
+      }
+  requestAnimationFrame(k);
+};
+requestAnimationFrame(k);
+class I {
+  constructor() {
+    o(this, "funcs", /* @__PURE__ */ new Set());
+    o(this, "status", "stop");
+    o(this, "startTime", 0);
+    this.status = "running", w.push(this), requestAnimationFrame((i) => this.startTime = i);
+  }
+  add(i) {
+    return this.funcs.add(i), this;
+  }
+  remove(i) {
+    return this.funcs.delete(i), this;
+  }
+  clear() {
+    this.funcs.clear();
+  }
+  destroy() {
+    this.clear(), this.stop();
+  }
+  stop() {
+    this.status = "stop", w = w.filter((i) => i !== this);
+  }
+}
+class F {
+  constructor() {
+    o(this, "timing");
+    o(this, "relation", "absolute");
+    o(this, "easeTime", 0);
+    o(this, "applying", {});
+    o(this, "getTime", Date.now);
+    o(this, "ticker", new I());
+    o(this, "value", {});
+    o(this, "listener", {});
+    this.timing = (i) => i;
+  }
+  async all() {
+    if (Object.values(this.applying).every((i) => i === !0))
+      throw new ReferenceError("There is no animates to be waited.");
+    await new Promise((i) => {
+      const t = () => {
+        Object.values(this.applying).every((e) => e === !1) && (this.unlisten("end", t), i("all animated."));
+      };
+      this.listen("end", t);
+    });
+  }
+  async n(i) {
+    const t = Object.values(this.applying).filter((s) => s === !0).length;
+    if (t < i)
+      throw new ReferenceError(
+        `You are trying to wait ${i} animate, but there are only ${t} animate animating.`
+      );
+    let e = 0;
+    await new Promise((s) => {
+      const r = () => {
+        e++, e === i && (this.unlisten("end", r), s(`${i} animated.`));
+      };
+      this.listen("end", r);
+    });
+  }
+  async w(i) {
+    if (this.applying[i] === !1)
+      throw new ReferenceError(`The ${i} animate is not animating.`);
+    await new Promise((t) => {
+      const e = () => {
+        this.applying[i] === !1 && (this.unlisten("end", e), t(`${i} animated.`));
+      };
+      this.listen("end", e);
+    });
+  }
+  listen(i, t) {
+    var e, s;
+    (s = (e = this.listener)[i]) != null || (e[i] = []), this.listener[i].push(t);
+  }
+  unlisten(i, t) {
+    const e = this.listener[i].findIndex((s) => s === t);
+    if (e === -1)
+      throw new ReferenceError(
+        "You are trying to remove a nonexistent listener."
+      );
+    this.listener[i].splice(e, 1);
+  }
+  hook(...i) {
+    const t = Object.entries(this.listener).filter(
+      (e) => i.includes(e[0])
+    );
+    for (const [e, s] of t)
+      for (const r of s)
+        r(this, e);
+  }
+}
+function y(n) {
+  return n != null;
+}
+async function R(n) {
+  return new Promise((i) => setTimeout(i, n));
+}
+class j extends F {
+  constructor() {
+    super();
+    o(this, "shakeTiming");
+    o(this, "path");
+    o(this, "multiTiming");
+    o(this, "value", {});
+    o(this, "size", 1);
+    o(this, "angle", 0);
+    o(this, "targetValue", {
+      system: {
+        move: [0, 0],
+        moveAs: [0, 0],
+        resize: 0,
+        rotate: 0,
+        shake: 0,
+        "@@bind": []
+      },
+      custom: {}
+    });
+    o(this, "animateFn", {
+      system: {
+        move: [() => 0, () => 0],
+        moveAs: () => 0,
+        resize: () => 0,
+        rotate: () => 0,
+        shake: () => 0,
+        "@@bind": () => 0
+      },
+      custom: {}
+    });
+    o(this, "ox", 0);
+    o(this, "oy", 0);
+    o(this, "sx", 0);
+    o(this, "sy", 0);
+    o(this, "bindInfo", []);
+    this.timing = (t) => t, this.shakeTiming = (t) => t, this.multiTiming = (t) => [t, t], this.path = (t) => [t, t], this.applying = {
+      move: !1,
+      scale: !1,
+      rotate: !1,
+      shake: !1
+    }, this.ticker.add(() => {
+      const { running: t } = this.listener;
+      if (y(t))
+        for (const e of t)
+          e(this, "running");
+    });
+  }
+  get x() {
+    return this.ox + this.sx;
+  }
+  get y() {
+    return this.oy + this.sy;
+  }
+  mode(t, e = !1) {
+    return typeof t(0) == "number" ? e ? this.shakeTiming = t : this.timing = t : this.multiTiming = t, this;
+  }
+  time(t) {
+    return this.easeTime = t, this;
+  }
+  relative() {
+    return this.relation = "relative", this;
+  }
+  absolute() {
+    return this.relation = "absolute", this;
+  }
+  bind(...t) {
+    return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = t, this;
+  }
+  unbind() {
+    return this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.bindInfo = [], this;
+  }
+  move(t, e) {
+    return this.applying.move && this.end(!0, "move"), this.applySys("ox", t, "move"), this.applySys("oy", e, "move"), this;
+  }
+  rotate(t) {
+    return this.applySys("angle", t, "rotate"), this;
+  }
+  scale(t) {
+    return this.applySys("size", t, "resize"), this;
+  }
+  shake(t, e) {
+    this.applying.shake === !0 && this.end(!0, "shake"), this.applying.shake = !0;
+    const { easeTime: s, shakeTiming: r } = this, l = this.getTime();
+    if (this.hook("start", "shakestart"), s <= 0)
+      return this.end(!1, "shake"), this;
+    const a = () => {
+      const c = this.getTime() - l;
+      if (c > s) {
+        this.ticker.remove(a), this.applying.shake = !1, this.sx = 0, this.sy = 0, this.hook("end", "shakeend");
+        return;
+      }
+      const h = c / s, m = r(h);
+      this.sx = m * t, this.sy = m * e;
+    };
+    return this.ticker.add(a), this.animateFn.system.shake = a, this;
+  }
+  moveAs(t) {
+    this.applying.moveAs && this.end(!0, "moveAs"), this.applying.moveAs = !0, this.path = t;
+    const { easeTime: e, relation: s, timing: r } = this, l = this.getTime(), [a, u] = [this.x, this.y], [c, h] = (() => {
+      if (s === "absolute")
+        return t(1);
+      {
+        const [d, f] = t(1);
+        return [a + d, u + f];
+      }
+    })();
+    if (this.hook("start", "movestart"), e <= 0)
+      return this.end(!1, "moveAs"), this;
+    const m = () => {
+      const f = this.getTime() - l;
+      if (f > e) {
+        this.end(!0, "moveAs");
+        return;
+      }
+      const g = f / e, [v, x] = t(r(g));
+      s === "absolute" ? (this.ox = v, this.oy = x) : (this.ox = a + v, this.oy = u + x);
+    };
+    return this.ticker.add(m), this.animateFn.system.moveAs = m, this.targetValue.system.moveAs = [c, h], this;
+  }
+  register(t, e) {
+    if (typeof this.value[t] == "number")
+      return this.error(
+        `Property ${t} has been regietered twice.`,
+        "reregister"
+      );
+    this.value[t] = e, this.applying[t] = !1;
+  }
+  apply(t, e) {
+    this.applying[t] === !0 && this.end(!1, t), t in this.value || this.error(
+      `You are trying to execute nonexistent property ${t}.`
+    ), this.applying[t] = !0;
+    const s = this.value[t], r = this.getTime(), { timing: l, relation: a, easeTime: u } = this, c = a === "absolute" ? e - s : e;
+    if (this.hook("start"), u <= 0)
+      return this.end(!1, t), this;
+    const h = () => {
+      const d = this.getTime() - r;
+      if (d > u) {
+        this.end(!1, t);
+        return;
+      }
+      const f = d / u, g = l(f);
+      this.value[t] = s + g * c;
+    };
+    return this.ticker.add(h), this.animateFn.custom[t] = h, this.targetValue.custom[t] = c + s, this;
+  }
+  applyMulti() {
+    this.applying["@@bind"] === !0 && this.end(!1, "@@bind"), this.applying["@@bind"] = !0;
+    const t = this.bindInfo, e = t.map((h) => this.value[h]), s = this.getTime(), { multiTiming: r, relation: l, easeTime: a } = this, u = r(1);
+    if (u.length !== e.length)
+      throw new TypeError(
+        `The number of binded animate attributes and timing function returns's length does not match. binded: ${t.length}, timing: ${u.length}`
+      );
+    if (this.hook("start"), a <= 0)
+      return this.end(!1, "@@bind"), this;
+    const c = () => {
+      const m = this.getTime() - s;
+      if (m > a) {
+        this.end(!1, "@@bind");
+        return;
+      }
+      const d = m / a, f = r(d);
+      t.forEach((g, v) => {
+        l === "absolute" ? this.value[g] = f[v] : this.value[g] = e[v] + f[v];
+      });
+    };
+    return this.ticker.add(c), this.animateFn.custom["@@bind"] = c, this.targetValue.system["@@bind"] = u, this;
+  }
+  applySys(t, e, s) {
+    s !== "move" && this.applying[s] === !0 && this.end(!0, s), this.applying[s] = !0;
+    const r = this[t], l = this.getTime(), a = this.timing, u = this.relation, c = this.easeTime, h = u === "absolute" ? e - r : e;
+    if (this.hook("start", `${s}start`), c <= 0)
+      return this.end(!0, s);
+    const m = () => {
+      const f = this.getTime() - l;
+      if (f > c) {
+        this.end(!0, s);
+        return;
+      }
+      const g = f / c, v = a(g);
+      this[t] = r + h * v, t !== "oy" && this.hook(s);
+    };
+    this.ticker.add(m), t === "ox" ? this.animateFn.system.move[0] = m : t === "oy" ? this.animateFn.system.move[1] = m : this.animateFn.system[s] = m, s === "move" ? (t === "ox" && (this.targetValue.system.move[0] = h + r), t === "oy" && (this.targetValue.system.move[1] = h + r)) : s !== "shake" && (this.targetValue.system[s] = h + r);
+  }
+  error(t, e) {
+    throw e === "repeat" ? new Error(
+      `Cannot execute the same animation twice. Info: ${t}`
+    ) : e === "reregister" ? new Error(
+      `Cannot register an animated property twice. Info: ${t}`
+    ) : new Error(t);
+  }
+  end(t, e) {
+    if (t === !0)
+      if (this.applying[e] = !1, e === "move" ? (this.ticker.remove(this.animateFn.system.move[0]), this.ticker.remove(this.animateFn.system.move[1])) : e === "moveAs" ? this.ticker.remove(this.animateFn.system.moveAs) : e === "@@bind" ? this.ticker.remove(this.animateFn.system["@@bind"]) : this.ticker.remove(
+        this.animateFn.system[e]
+      ), e === "move") {
+        const [s, r] = this.targetValue.system.move;
+        this.ox = s, this.oy = r, this.hook("moveend", "end");
+      } else if (e === "moveAs") {
+        const [s, r] = this.targetValue.system.moveAs;
+        this.ox = s, this.oy = r, this.hook("moveend", "end");
+      } else
+        e === "rotate" ? (this.angle = this.targetValue.system.rotate, this.hook("rotateend", "end")) : e === "resize" ? (this.size = this.targetValue.system.resize, this.hook("resizeend", "end")) : e === "@@bind" ? this.bindInfo.forEach((r, l) => {
+          this.value[r] = this.targetValue.system["@@bind"][l];
+        }) : (this.sx = 0, this.sy = 0, this.hook("shakeend", "end"));
+    else
+      this.applying[e] = !1, this.ticker.remove(this.animateFn.custom[e]), this.value[e] = this.targetValue.custom[e], this.hook("end");
+  }
+}
+class O extends F {
+  constructor() {
+    super();
+    o(this, "now", {});
+    o(this, "target", {});
+    o(this, "transitionFn", {});
+    o(this, "value");
+    o(this, "handleSet", (t, e, s) => (this.transition(e, s), !0));
+    o(this, "handleGet", (t, e) => this.now[e]);
+    this.timing = (t) => t, this.value = new Proxy(this.target, {
+      set: this.handleSet,
+      get: this.handleGet
+    });
+  }
+  mode(t) {
+    return this.timing = t, this;
+  }
+  time(t) {
+    return this.easeTime = t, this;
+  }
+  relative() {
+    return this.relation = "relative", this;
+  }
+  absolute() {
+    return this.relation = "absolute", this;
+  }
+  transition(t, e) {
+    if (e === this.target[t])
+      return this;
+    if (!y(this.now[t]))
+      return this.now[t] = e, this;
+    this.applying[t] && this.end(t, !0), this.applying[t] = !0, this.hook("start");
+    const s = this.getTime(), r = this.easeTime, l = this.timing, a = this.now[t], u = e + (this.relation === "absolute" ? 0 : a), c = u - a;
+    this.target[t] = u;
+    const h = () => {
+      const d = this.getTime() - s;
+      if (d >= r) {
+        this.end(t);
+        return;
+      }
+      const f = d / r;
+      this.now[t] = l(f) * c + a, this.hook("running");
+    };
+    return this.transitionFn[t] = h, this.ticker.add(h), r <= 0 ? (this.end(t), this) : this;
+  }
+  end(t, e = !1) {
+    const s = this.transitionFn[t];
+    if (!y(s))
+      throw new ReferenceError(
+        `You are trying to end an ended transition: ${t}`
+      );
+    this.ticker.remove(this.transitionFn[t]), delete this.transitionFn[t], this.applying[t] = !1, this.hook("end"), e || (this.now[t] = this.target[t]);
+  }
+}
+const T = (...n) => n.reduce((i, t) => i + t, 0), b = (n) => {
+  if (n === 0)
+    return 1;
+  let i = n;
+  for (; n > 1; )
+    n--, i *= n;
+  return i;
+}, A = (n, i) => Math.round(b(i) / (b(n) * b(i - n))), p = (n, i, t = (e) => 1 - i(1 - e)) => n === "in" ? i : n === "out" ? t : n === "in-out" ? (e) => e < 0.5 ? i(e * 2) / 2 : 0.5 + t((e - 0.5) * 2) / 2 : (e) => e < 0.5 ? t(e * 2) / 2 : 0.5 + i((e - 0.5) * 2) / 2, $ = Math.cosh(2), z = Math.acosh(2), V = Math.tanh(3), P = Math.atan(5);
+function Y() {
+  return (n) => n;
+}
+function q(...n) {
+  const i = [0].concat(n);
+  i.push(1);
+  const t = i.length, e = Array(t).fill(0).map((s, r) => A(r, t - 1));
+  return (s) => {
+    const r = e.map((l, a) => l * i[a] * (1 - s) ** (t - a - 1) * s ** a);
+    return T(...r);
+  };
+}
+function U(n, i) {
+  if (n === "sin") {
+    const t = (s) => Math.sin(s * Math.PI / 2);
+    return p(i, (s) => 1 - t(1 - s), t);
+  }
+  if (n === "sec") {
+    const t = (s) => 1 / Math.cos(s);
+    return p(i, (s) => t(s * Math.PI / 3) - 1);
+  }
+  throw new TypeError(
+    "Unexpected parameters are delivered in trigo timing function."
+  );
+}
+function C(n, i) {
+  if (!Number.isInteger(n))
+    throw new TypeError(
+      "The first parameter of power timing function only allow integer."
+    );
+  return p(i, (e) => e ** n);
+}
+function G(n, i) {
+  if (n === "sin")
+    return p(i, (e) => (Math.cosh(e * 2) - 1) / ($ - 1));
+  if (n === "tan") {
+    const t = (s) => Math.tanh(s * 3) * 1 / V;
+    return p(i, (s) => 1 - t(1 - s), t);
+  }
+  if (n === "sec") {
+    const t = (s) => 1 / Math.cosh(s);
+    return p(i, (s) => 1 - (t(s * z) - 0.5) * 2);
+  }
+  throw new TypeError(
+    "Unexpected parameters are delivered in hyper timing function."
+  );
+}
+function N(n, i) {
+  if (n === "sin") {
+    const t = (s) => Math.asin(s) / Math.PI * 2;
+    return p(i, (s) => 1 - t(1 - s), t);
+  }
+  if (n === "tan") {
+    const t = (s) => Math.atan(s * 5) / P;
+    return p(i, (s) => 1 - t(1 - s), t);
+  }
+  throw new TypeError(
+    "Unexpected parameters are delivered in inverse trigo timing function."
+  );
+}
+function B(n, i = () => 1) {
+  let t = -1;
+  return (e) => (t *= -1, e < 0.5 ? n * i(e * 2) * t : n * i((1 - e) * 2) * t);
+}
+function D(n, i = 1, t = [0, 0], e = 0, s = (l) => 1, r = !1) {
+  return (l) => {
+    const a = i * l * Math.PI * 2 + e * Math.PI / 180, u = Math.cos(a), c = Math.sin(a), h = n * s(s(r ? 1 - l : l));
+    return [h * u + t[0], h * c + t[1]];
+  };
+}
+function H(n, i, ...t) {
+  const e = [n].concat(t);
+  e.push(i);
+  const s = e.length, r = Array(s).fill(0).map((l, a) => A(a, s - 1));
+  return (l) => {
+    const a = r.map((c, h) => c * e[h][0] * (1 - l) ** (s - h - 1) * l ** h), u = r.map((c, h) => c * e[h][1] * (1 - l) ** (s - h - 1) * l ** h);
+    return [T(...a), T(...u)];
+  };
+}
+if ('animate' in core.plugin) throw new ReferenceError(`插件中已存在名为animate的属性！`);
+
+core.plugin.animate = {
+    Animation: j,
+    AnimationBase: F,
+    Ticker: I,
+    Transition: O,
+    bezier: q,
+    bezierPath: H,
+    circle: D,
+    hyper: G,
+    linear: Y,
+    power: C,
+    shake: B,
+    sleep: R,
+    trigo: U,
+    inverseTrigo: N,
+}
+
+};
+_animatePluginFn();
+
+// ==================== 碎裂特效插件 (frag) ====================
+// 依赖: core.plugin.animate, core.plugin.utils
+// 打怪后自动碎裂，也可手动调用 applyFragWith(canvas, length, time, config)
+var _fragPluginFn = function () {
+
+// 兜底：如果 core 尚未定义，注册到 plugins 对象延迟执行
+if (typeof core === 'undefined') {
+    plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1["frag"] = _fragPluginFn;
+    return;
+}
+
+if (main.replayChecking) return core.plugin.frag = {};
+
+// 延迟获取依赖：插件加载时 core.plugin 可能尚未初始化
+function _getAnimate() { return core.plugin.animate; }
+function _getUtils() { return core.plugin.utils; }
+
+/** 最大移动距离，最终位置距离中心的距离变成原来的几倍 */
+const MAX_MOVE_LENGTH = 1.15;
+/** 移动距离波动，在最大移动距离的基础上加上多少倍距离的波动距离 */
+const MOVE_FLUSH = 0.7;
+/** 最大旋转角，单位是弧度，每个碎片都会有自己的旋转程度，是随机的 */
+const MAX_ROTATE = 0.5;
+/** 碎裂动画的速率曲线函数 */
+const FRAG_TIMING = (function() { var a = _getAnimate(); return a ? a.linear() : function(t) { return t; }; })();
+
+/**
+ * @param {HTMLCanvasElement} canvas 要执行特效的画布
+ * @param {number} length 切分成的碎片的边长，碎片为正方形
+ * @param {number} time 特效持续时长
+ * @returns 返回一个碎裂特效控制器，是一个对象
+ */
+function applyFragWith(canvas, length = 4, time = 2000, config = {}) {
+    // 先切分图片
+    const imgs = splitCanvas(canvas, length);
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    let maxX = 0;
+    let maxY = 0;
+    const toMove = imgs.map(v => {
+        const centerX = v.x + v.canvas.width / 2;
+        const centerY = v.y + v.canvas.height / 2;
+        const onX = centerX === cx;
+        const onY = centerY === cy;
+        const mml = config.maxMoveLength ?? MAX_MOVE_LENGTH;
+        const mf = config.moveFlush ?? MOVE_FLUSH;
+        const rate = mml - 1 + Math.random() ** 3 * mf;
+        let endX = onY ? 0 : (centerX - cx) * rate;
+        let endY = onX ? 0 : (centerY - cy) * rate;
+        const mx = Math.abs(endX + centerX) + Math.abs(v.canvas.width);
+        const my = Math.abs(endY + centerY) + Math.abs(v.canvas.height);
+        if (mx > maxX) maxX = mx;
+        if (my > maxY) maxY = my;
+        const r = config.maxRotate ?? MAX_ROTATE;
+        const endRad = Math.random() * r * 2 - r;
+
+        return {
+            deltaX: endX,
+            deltaY: endY,
+            endRad,
+            x: centerX,
+            y: centerY,
+            canvas: v.canvas
+        };
+    });
+
+    // 再执行动画
+    const frag = document.createElement('canvas');
+    const ctx = frag.getContext('2d');
+    const ani = new (_getAnimate().Animation)();
+    ani.register('rate', 0);
+    const ft = config.fragTiming ?? FRAG_TIMING;
+    ani.absolute().time(time).mode(ft).apply('rate', 1);
+    frag.width = maxX * 2;
+    frag.height = maxY * 2;
+    ctx.save();
+    const dw = maxX - canvas.width / 2;
+    const dh = maxY - canvas.height / 2;
+
+    const fragFn = () => {
+        const rate = ani.value.rate;
+        const opacity = 1 - rate;
+        ctx.globalAlpha = opacity;
+        ctx.clearRect(0, 0, frag.width, frag.height);
+        toMove.forEach(v => {
+            ctx.save();
+            const nx = v.deltaX * rate;
+            const ny = v.deltaY * rate;
+            const rotate = v.endRad * rate;
+
+            ctx.translate(nx + v.x + dw, ny + v.y + dh);
+            ctx.rotate(rotate);
+            ctx.drawImage(
+                v.canvas,
+                nx - v.canvas.width / 2,
+                ny - v.canvas.height / 2
+            );
+            ctx.restore();
+        });
+    };
+    const onEnd = () => {};
+    ani.ticker.add(fragFn);
+
+    return makeFragManager(frag, ani, time, onEnd);
+}
+
+function makeFragManager(canvas, ani, time, onEnd) {
+    const promise = _getAnimate().sleep(time + 50);
+
+    return {
+        animation: ani,
+        onEnd: promise.then(() => {
+            ani.ticker.destroy();
+            onEnd();
+        }),
+        canvas
+    };
+}
+
+function withImage(image, sx, sy, sw, sh) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = sw;
+    canvas.height = sh;
+    ctx.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+    return { canvas, x: sx, y: sy };
+}
+
+/**
+ * 切分画布
+ * @param canvas 要被切分的画布
+ * @param l 切分小块的边长
+ */
+function splitCanvas(canvas, l) {
+    if (canvas.width / l < 2 || canvas.height / l < 2) {
+        console.warn('切分画布要求切分边长大于等于画布长宽的一半！');
+        return [];
+    }
+    const w = canvas.width;
+    const h = canvas.height;
+    const numX = Math.floor(w / l);
+    const numY = Math.floor(h / l);
+    const rw = (w - numX * l) / 2;
+    const rh = (h - numY * l) / 2;
+
+    const res = [];
+
+    if (rw > 0) {
+        if (rh > 0) {
+            res.push(
+                withImage(canvas, 0, 0, rw, rh),
+                withImage(canvas, 0, canvas.height - rh, rw, rh),
+                withImage(canvas, canvas.width - rw, 0, rw, rh),
+                withImage(canvas, canvas.width - rw, canvas.height - rh, rw, rh)
+            );
+        }
+        for (const x of [0, canvas.width - rw]) {
+            for (let ny = 0; ny < numY; ny++) {
+                res.push(withImage(canvas, x, rh + l * ny, rw, l));
+            }
+        }
+    }
+    if (rh > 0) {
+        for (const y of [0, canvas.height - rh]) {
+            for (let nx = 0; nx < numX; nx++) {
+                res.push(withImage(canvas, rw + l * nx, y, l, rh));
+            }
+        }
+    }
+    for (let nx = 0; nx < numX; nx++) {
+        for (let ny = 0; ny < numY; ny++) {
+            res.push(withImage(canvas, rw + l * nx, rh + l * ny, l, l));
+        }
+    }
+
+    return res;
+}
+
+// 延迟安装 afterBattle hook，等 core.events 初始化完成
+var _fragHooked = false;
+function _ensureFragHooked() {
+    if (_fragHooked) return;
+    if (!core.events || !core.events.afterBattle) {
+        return;
+    }
+    _fragHooked = true;
+    var origin = core.events.afterBattle;
+    core.events.afterBattle = function (enemyId, x, y) {
+        // 打怪碎裂特效
+        try {
+            var _has = _getUtils().has;
+            if (_has(x) && _has(y)) {
+                // 获取怪物图像
+                var info = core.getBlockInfo(enemyId);
+                if (info && info.image) {
+                    var frame = core.status.globalAnimateStatus % 2;
+                    var srcCanvas = document.createElement('canvas');
+                    srcCanvas.width = 32;
+                    srcCanvas.height = info.height || 32;
+                    var sctx = srcCanvas.getContext('2d');
+                    sctx.drawImage(
+                        info.image,
+                        32 * ((info.posX || 0) + frame), (info.height || 32) * (info.posY || 0),
+                        32, info.height || 32,
+                        0, 0,
+                        32, info.height || 32
+                    );
+                    var manager = applyFragWith(srcCanvas);
+                    var frag = manager.canvas;
+                    frag.style.imageRendering = 'pixelated';
+                    frag.style.width = (frag.width * (core.domStyle.scale || 1)) + 'px';
+                    frag.style.height = (frag.height * (core.domStyle.scale || 1)) + 'px';
+                    var ox = core.bigmap && core.bigmap.offsetX != null ? core.bigmap.offsetX : 0;
+                    var oy = core.bigmap && core.bigmap.offsetY != null ? core.bigmap.offsetY : 0;
+                    var scl = core.domStyle && core.domStyle.scale ? core.domStyle.scale : 1;
+                    var left = (x * 32 + 16 - frag.width / 2 - ox) * scl;
+                    var top = (y * 32 + 16 - frag.height / 2 - oy) * scl;
+                    frag.style.left = left + 'px';
+                    frag.style.top = top + 'px';
+                    frag.style.zIndex = '45';
+                    frag.style.position = 'absolute';
+                    if (core.dom && core.dom.gameDraw) {
+                        core.dom.gameDraw.appendChild(frag);
+                    }
+                    manager.onEnd.then(function () {
+                        if (frag.parentNode) frag.remove();
+                    });
+                }
+            } else {
+            }
+        } catch (e) {
+            console.warn('frag plugin error:', e);
+        }
+        // 【星冥线】击杀动画：根据角色选择不同动画
+        var killAnimId = core.getFlag('char_kill_anim', 8); // 默认妖梦短剑8号，幽幽子用3号
+        core.playBattleAnim(killAnimId, {tx: x, ty: y, fps: 12, scale: 1.0});
+        return origin.apply(this, arguments);
+    };
+}
+
+if ('frag' in core.plugin) {
+    throw new ReferenceError(`core.plugin上已存在名为frag的属性！`);
+}
+core.plugin.frag = {
+    applyFragWith: applyFragWith,
+    _ensureFragHooked: _ensureFragHooked
+};
+
+// 挂钩到 _afterLoadResources，确保在游戏完全初始化后安装
+// 如果 _afterLoadResources 尚未设置，使用 setTimeout 兜底
+if (core.plugin._afterLoadResources) {
+    var _prevALR = core.plugin._afterLoadResources;
+    core.plugin._afterLoadResources = function() {
+        if (_prevALR) _prevALR();
+        _ensureFragHooked();
+    };
+} else {
+    setTimeout(_ensureFragHooked, 100);
+    setTimeout(_ensureFragHooked, 1000);
+}
+
+};
+_fragPluginFn();// ==================== 自动拾取/清怪 (autoClean) ====================
+// 移植自 RGM Script#124「自动拾取系统」
+// flags:
+//   autoPick: boolean — 自动拾取道具（默认false）
+//   autoClear: boolean — 自动清除0伤怪物（默认false）
+//   autoPickExcludeFloors: string — 逗号分隔的排除楼层ID（默认""），对应RGM ZiDongShiQulc
+//   autoClearSkipEvents: boolean — 跳过有战前/战后事件的0伤怪（默认true）
+var _autoCleanPluginFn = function () {
+
+// 兜底：如果 core 尚未定义，注册到 plugins 对象延迟执行
+if (typeof core === 'undefined') {
+    plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1["autoClean"] = _autoCleanPluginFn;
+    return;
+}
+
+if (main.replayChecking) return core.plugin.autoClean = {};
+
+// ==================== 动画相关 ====================
+var Transition, hyper, Ticker;
+function _getAnimate() {
+    if (!Transition) {
+        var ani = core.plugin.animate;
+        Transition = ani.Transition;
+        hyper = ani.hyper;
+        Ticker = ani.Ticker;
+    }
+    return core.plugin.animate;
+}
+
+var transitionTime = 120; // 磁吸动画时长（毫秒）
+var transitionList = []; // 动画列表（用数组便于清理）
+
+// 动画 Canvas 清理 ticker
+var _animTicker = null;
+function _ensureAnimTicker() {
+    if (_animTicker) return;
+    _animTicker = new Ticker();
+    _animTicker.add(function () {
+        if (!core.isPlaying()) return;
+        var ctx = core.getContextByName('_autoItem_');
+        if (ctx) core.clearMap(ctx);
+    });
+}
+
+// ==================== 辅助函数 ====================
+
+// 获取排除楼层列表（从 flag 解析）
+function _getExcludeFloors() {
+    var raw = core.getFlag('autoPickExcludeFloors', 'f0_garden');
+    if (!raw || raw === '') return [];
+    return String(raw).split(',').map(function (s) { return s.trim(); });
+}
+
+// 当前楼层是否被排除
+function _isFloorExcluded(floorId) {
+    floorId = floorId || core.status.floorId;
+    var exclude = _getExcludeFloors();
+    return exclude.indexOf(String(floorId)) >= 0;
+}
+
+// 获取当前楼层的地图尺寸
+function _getMapSize(floorId) {
+    floorId = floorId || core.status.floorId;
+    var map = core.status.maps[floorId];
+    if (!map) return { w: 13, h: 13 };
+    return { w: map.width || 13, h: map.height || 13 };
+}
+
+// 当前位置是否可通过（用于BFS判断）
+function passThrough(x, y, floorId) {
+    floorId = floorId || core.status.floorId;
+    var size = _getMapSize(floorId);
+    if (x < 0 || y < 0 || x >= size.w || y >= size.h) return false;
+
+    var loc = x + ',' + y;
+
+    // 当前格有阻击/捕捉/地图伤害 → 不可通过
+    try {
+        var cb = core.status.checkBlock;
+        if (cb.repulse && cb.repulse[loc]) return false;
+        if (cb.ambush && cb.ambush[loc]) return false;
+        if (cb.damage && cb.damage[loc]) return false;
+    } catch (e) {}
+
+    var id = core.getBlockId(x, y, floorId);
+    if (id === null || id === undefined) return true; // 空地
+
+    var cls = core.getBlockCls(x, y, floorId);
+    var block = core.getBlock(x, y, floorId);
+    var autoPick = core.getFlag('autoPick', true);
+    var autoClear = core.getFlag('autoClear', true);
+    var floor = core.floors[floorId];
+
+    // 道具类 → 可自动拾取（无拾取后事件时）
+    if (cls === 'items' || cls === 'tools' || cls === 'constants') {
+        if (autoPick && floor && floor.afterGetItem && !floor.afterGetItem[loc]) return true;
+        return false;
+    }
+
+    // 怪物类 → 0伤且无事件时可自动清
+    if (cls === 'enemys' || cls === 'enemy48') {
+        if (!autoClear) return false;
+        var damage = core.enemys.getDamage(id, x, y, floorId);
+        if (damage !== 0) return false;
+        // 必须是普通战斗触发类型
+        if (!block || !block.event || block.event.trigger !== 'battle') return false;
+        // 跳过有战前/战后事件的怪物
+        var skipEvents = core.getFlag('autoClearSkipEvents', true);
+        if (skipEvents) {
+            if (floor && floor.afterBattle && floor.afterBattle[loc]) return false;
+            if (floor && floor.beforeBattle && floor.beforeBattle[loc]) return false;
+            var edata = core.enemys && core.enemys.enemys && core.enemys.enemys[id];
+            if (edata && edata.afterBattle) return false;
+            if (edata && edata.beforeBattle) return false;
+        }
+        return true;
+    }
+
+    // 地形类
+    if (cls === 'terrains') {
+        if (id === 'light') return false; // 感叹号不支持
+        if (block && block.event && block.event.trigger === 'ski') return false; // 滑冰不支持
+        if (block && block.event && !block.event.noPass) return true; // 可穿透地形
+        return false;
+    }
+
+    return false;
+}
+
+// 从目标点(startX,startY)能否返回英雄当前位置（处理单向箭头）
+function canReturn(startX, startY) {
+    var endX = core.getHeroLoc('x');
+    var endY = core.getHeroLoc('y');
+    var size = _getMapSize();
+
+    if (startX < 0 || startY < 0 || startX >= size.w || startY >= size.h) return false;
+    if (!passThrough(startX, startY) || !passThrough(endX, endY)) return false;
+
+    // 动态大小 visited 数组（修复原版硬编码13×13的bug）
+    var visited = [];
+    for (var i = 0; i < size.w; i++) {
+        visited[i] = [];
+        for (var j = 0; j < size.h; j++) {
+            visited[i][j] = false;
+        }
+    }
+
+    var q = [];
+    q.push([startX, startY]);
+    visited[startX][startY] = true;
+
+    while (q.length > 0) {
+        var cur = q.shift();
+        var cx = cur[0], cy = cur[1];
+
+        if (cx === endX && cy === endY) return true;
+
+        var dirs = ['up', 'right', 'down', 'left'];
+        for (var d = 0; d < dirs.length; d++) {
+            var dir = dirs[d];
+            var nx = cx + core.utils.scan[dir].x;
+            var ny = cy + core.utils.scan[dir].y;
+
+            if (nx >= 0 && ny >= 0 && nx < size.w && ny < size.h &&
+                core.canMoveHero(cx, cy, dir) &&
+                passThrough(nx, ny) &&
+                !visited[nx][ny]) {
+                q.push([nx, ny]);
+                visited[nx][ny] = true;
+            }
+        }
+    }
+    return false;
+}
+
+// 磁吸动画：道具飞到英雄位置
+function animationItem(id, sx, sy) {
+    _getAnimate();
+    _ensureAnimTicker();
+
+    var px = sx * 32 - (core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0);
+    var py = sy * 32 - (core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0);
+
+    var t = new Transition();
+    t.mode(hyper('sin', 'out'))
+        .time(transitionTime)
+        .absolute()
+        .transition('x', px)
+        .transition('y', py);
+
+    var hx = core.status.hero.loc.x;
+    var hy = core.status.hero.loc.y;
+    t.value.x = hx * 32 - (core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0);
+    t.value.y = hy * 32 - (core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0);
+    t._acEndLoc = { x: hx, y: hy };
+
+    // 动画中英雄移动时更新终点
+    t.listen('running', function (ani) {
+        var ex = core.status.hero.loc.x;
+        var ey = core.status.hero.loc.y;
+        if (ex !== ani._acEndLoc.x || ey !== ani._acEndLoc.y) {
+            ani.value.x = ex * 32 - (core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0);
+            ani.value.y = ey * 32 - (core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0);
+            ani._acEndLoc = { x: ex, y: ey };
+        }
+    });
+
+    transitionList.push(t);
+
+    t.ticker.add(function () {
+        core.drawIcon('_autoItem_', id, t.value.x, t.value.y, 32, 32);
+        var hx2 = core.status.hero.loc.x;
+        var hy2 = core.status.hero.loc.y;
+        var ox = core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0;
+        var oy = core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0;
+        if (Math.abs(t.value.x - hx2 * 32 + ox) < 0.05 &&
+            Math.abs(t.value.y - hy2 * 32 + oy) < 0.05) {
+            t.ticker.destroy();
+            var idx = transitionList.indexOf(t);
+            if (idx >= 0) transitionList.splice(idx, 1);
+        }
+    });
+}
+
+// BFS 广搜可清理的图块
+function bfs(sx, sy, floorId) {
+    floorId = floorId || core.status.floorId;
+    var size = _getMapSize(floorId);
+
+    if (sx < 0 || sx >= size.w || sy < 0 || sy >= size.h) return;
+
+    var sLoc = sx + ',' + sy;
+
+    // 当前英雄所在点有地图伤害或阻击 → 不清理
+    try {
+        var cb = core.status.checkBlock;
+        if ((cb.repulse && cb.repulse[sLoc]) || (cb.damage && cb.damage[sLoc])) return;
+    } catch (e) {}
+
+    // 动态大小队列和已检测数组
+    var queue = [];
+    var checked = [];
+    for (var i = 0; i < size.w; i++) {
+        checked[i] = [];
+        for (var j = 0; j < size.h; j++) {
+            checked[i][j] = false;
+        }
+    }
+
+    queue.push([sx, sy]);
+    checked[sx][sy] = true;
+
+    while (queue.length > 0) {
+        var cur = queue.shift();
+        var x = cur[0], y = cur[1];
+        var loc = x + ',' + y;
+        var cls = core.getBlockCls(x, y, floorId);
+        var id = core.getBlockId(x, y, floorId);
+        var floor = core.floors[floorId];
+
+        if (passThrough(x, y) && canReturn(x, y)) {
+            // 道具：拾取 + 动画
+            if (cls && (cls === 'items' || cls === 'tools' || cls === 'constants')) {
+                var afterGet = floor && floor.afterGetItem && floor.afterGetItem[loc];
+                if (!afterGet) {
+                    core.setFlag('__forbidSave__', true);
+                    core.getItem(id, 1, x, y);
+                    core.removeFlag('__forbidSave__');
+                    if (!main.replayChecking) animationItem(id, x, y);
+                }
+            }
+
+            // 怪物：战斗
+            if (cls && (cls === 'enemys' || cls === 'enemy48')) {
+                core.setFlag('__forbidSave__', true);
+                core.battle(id, x, y);
+                core.removeFlag('__forbidSave__');
+            }
+
+            // 向四个方向扩展BFS
+            var dirs = ['up', 'right', 'down', 'left'];
+            for (var d = 0; d < dirs.length; d++) {
+                var dir = dirs[d];
+                var nx = x + core.utils.scan[dir].x;
+                var ny = y + core.utils.scan[dir].y;
+
+                if (nx >= 0 && ny >= 0 && nx < size.w && ny < size.h &&
+                    core.canMoveHero(x, y, dir) &&
+                    passThrough(nx, ny) &&
+                    !checked[nx][ny]) {
+                    queue.push([nx, ny]);
+                    checked[nx][ny] = true;
+                }
+            }
+        }
+    }
+}
+
+// ==================== 主函数 ====================
+
+// 自动清理入口
+function doAutoClean(inActions) {
+    // 防止递归：BFS 内的 battle 触发 afterBattle 再调 autoClean
+    if (core.hasFlag('__autoCleaning')) return;
+    var autoPick = core.getFlag('autoPick', true);
+    var autoClear = core.getFlag('autoClear', true);
+    if (!autoPick && !autoClear) return;
+
+    // 排除楼层
+    if (_isFloorExcluded()) return;
+
+    // 如果在事件流中，插入到事件末尾执行
+    if (core.status.event && core.status.event.id && !inActions) {
+        core.insertAction({
+            "type": "function",
+            "function": "function(){core.plugin.autoClean.doAutoClean(true)}"
+        }, null, null, null, true);
+        return;
+    }
+
+    // 创建动画 canvas
+    var ctx = core.getContextByName('_autoItem_');
+    if (!ctx) {
+        core.createCanvas('_autoItem_', 0, 0,
+            core._PX_ || core.__PIXELS__ || 416,
+            core._PY_ || core.__PIXELS__ || 416, 75);
+    }
+
+    core.setFlag('__autoCleaning', true);
+    bfs(core.status.hero.loc.x, core.status.hero.loc.y, core.status.floorId);
+    core.removeFlag('__autoCleaning');
+
+    // 更新所有动画终点到当前英雄位置
+    if (!main.replayChecking) {
+        transitionList.forEach(function (ani) {
+            var hx = core.status.hero.loc.x;
+            var hy = core.status.hero.loc.y;
+            ani.value.x = hx * 32 - (core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0);
+            ani.value.y = hy * 32 - (core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0);
+        });
+    }
+}
+
+// ==================== 钩子安装 ====================
+
+function _installHooks() {
+    // --- afterChangeFloor：切换楼层后清理 ---
+    var _origAfterChangeFloor = core.events.afterChangeFloor;
+    core.events.afterChangeFloor = function (floorId) {
+        if (_origAfterChangeFloor) _origAfterChangeFloor.call(this, floorId);
+        if (main.mode !== 'play') return;
+        if (!core.hasFlag('__fromLoad__')) {
+            core.updateCheckBlock(floorId);
+            doAutoClean();
+        }
+    };
+
+    // --- afterBattle：战后清理（非强制战斗）---
+    var _origAfterBattle = core.events.afterBattle;
+    core.events.afterBattle = function (enemyId, x, y, force) {
+        var res;
+        if (_origAfterBattle) res = _origAfterBattle.call(this, enemyId, x, y, force);
+        if (!force && main.mode === 'play') {
+            core.updateCheckBlock();
+            doAutoClean();
+        }
+        return res;
+    };
+
+    // --- afterOpenDoor：开门后清理 ---
+    var _origAfterOpenDoor = core.events.afterOpenDoor;
+    core.events.afterOpenDoor = function (doorId, x, y) {
+        if (_origAfterOpenDoor) _origAfterOpenDoor.call(this, doorId, x, y);
+        if (main.mode === 'play') doAutoClean();
+    };
+
+    // --- _checkBlock_repulse：推开阻击后清理 ---
+    if (core.control && core.control._checkBlock_repulse) {
+        var _origCheckBlockRepulse = core.control._checkBlock_repulse;
+        core.control._checkBlock_repulse = function (repulse) {
+            _origCheckBlockRepulse.call(this, repulse);
+            if (main.mode === 'play') doAutoClean();
+        };
+    }
+
+    // --- moveOneStep：走出地图伤害点后清理 ---
+    if (core.control && core.control.moveOneStep) {
+        var _origMoveOneStep = core.control.moveOneStep;
+        core.control.moveOneStep = function (callback) {
+            var hadOnZone = core.hasFlag('onZone');
+            var res;
+            if (_origMoveOneStep) res = _origMoveOneStep.call(this, callback);
+
+            if (hadOnZone) {
+                // 从有地图伤害的点走出 → 清理
+                doAutoClean();
+                if (core.hasFlag('onZone')) core.removeFlag('onZone');
+            } else if (core.hasFlag('ontoZone')) {
+                // 刚走入有地图伤害的点
+                core.removeFlag('ontoZone');
+                core.setFlag('onZone', true);
+            }
+            return res;
+        };
+    }
+
+    // --- checkBlock：记录走入地图伤害点 ---
+    if (core.control && core.control.checkBlock) {
+        var _origCheckBlock = core.control.checkBlock;
+        core.control.checkBlock = function () {
+            var x = core.getHeroLoc('x');
+            var y = core.getHeroLoc('y');
+            var loc = x + ',' + y;
+            var damage = core.status.checkBlock && core.status.checkBlock.damage ?
+                core.status.checkBlock.damage[loc] : null;
+
+            if (damage) {
+                core.setFlag('ontoZone', true);
+            }
+
+            // 调用原函数
+            if (_origCheckBlock) _origCheckBlock.call(this);
+        };
+    }
+}
+
+// ==================== UI 系统设置集成（操作设置）====================
+
+var _uiHooksInstalled = false;
+function _installUIHooks() {
+    if (_uiHooksInstalled) return;
+    if (!ui || !ui.prototype || !ui.prototype._drawSwitchs_action) return;
+    if (!actions || !actions.prototype || !actions.prototype._clickSwitchs_action) return;
+    _uiHooksInstalled = true;
+
+    // --- 绘制：在操作设置中插入自动拾取/清怪开关 ---
+    var _prevDrawAction = ui.prototype._drawSwitchs_action;
+    ui.prototype._drawSwitchs_action = function () {
+        var self = this;
+        var _origDrawChoices = self.drawChoices;
+        self.drawChoices = function (align, choices) {
+            var idx = choices.indexOf("返回上一级");
+            if (idx >= 0) {
+                var ap = core.getFlag('autoPick', true);
+                var ac = core.getFlag('autoClear', true);
+                choices.splice(idx, 0,
+                    "自动拾取： " + (ap ? "[ON]" : "[OFF]"),
+                    "自动清怪： " + (ac ? "[ON]" : "[OFF]")
+                );
+            }
+            _origDrawChoices.call(self, align, choices);
+        };
+        _prevDrawAction.call(this);
+        self.drawChoices = _origDrawChoices;
+    };
+
+    // --- 点击：处理新增开关 ---
+    var _prevClickAction = actions.prototype._clickSwitchs_action;
+    actions.prototype._clickSwitchs_action = function (x, y) {
+        var choices = core.status.event.ui.choices;
+        var top = this._getChoicesTopIndex(choices.length);
+        var sel = y - top;
+
+        if (sel === 5) {
+            if (this._out(x)) return;
+            core.playSound('确定');
+            core.setFlag('autoPick', !core.getFlag('autoPick', true));
+            core.ui._drawSwitchs_action();
+            return;
+        }
+        if (sel === 6) {
+            if (this._out(x)) return;
+            core.playSound('确定');
+            core.setFlag('autoClear', !core.getFlag('autoClear', true));
+            core.ui._drawSwitchs_action();
+            return;
+        }
+        if (sel >= 7) {
+            y -= 2;
+        }
+        _prevClickAction.call(this, x, y);
+    };
+}
+
+// ==================== 安装与导出 ====================
+
+// 延迟安装钩子
+var _hooksInstalled = false;
+function _ensureHooks() {
+    if (_hooksInstalled) return;
+    if (!core.events || !core.events.afterBattle) return;
+    _hooksInstalled = true;
+    _installHooks();
+    _installUIHooks();
+}
+
+// 挂到 _afterLoadResources
+if (core.plugin._afterLoadResources) {
+    var _prevALR = core.plugin._afterLoadResources;
+    core.plugin._afterLoadResources = function () {
+        if (_prevALR) _prevALR();
+        _ensureHooks();
+    };
+} else {
+    setTimeout(_ensureHooks, 100);
+    setTimeout(_ensureHooks, 1000);
+}
+
+// 导出
+if (core.plugin.autoClean) {
+    console.warn('core.plugin.autoClean already exists, skipping autoClean plugin');
+} else {
+    core.plugin.autoClean = {
+        doAutoClean: doAutoClean,
+        passThrough: passThrough,
+        canReturn: canReturn,
+        bfs: bfs,
+        _ensureHooks: _ensureHooks,
+        _installUIHooks: _installUIHooks
+    };
+}
+
+}; // end _autoCleanPluginFn
+
+_autoCleanPluginFn();

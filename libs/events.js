@@ -2756,21 +2756,30 @@ events.prototype.openBook = function (fromUserAction) {
     // 如果能恢复事件（从callBook事件触发）
     if (core.status.event.id == 'book' && core.events.recoverEvents(core.status.event.interval))
         return;
-    // 当前是book，且从“浏览地图”打开
+    // 当前是book，且从"浏览地图"打开
     if (core.status.event.id == 'book' && core.status.event.ui) {
         core.status.boxAnimateObjs = [];
         core.ui._drawViewMaps(core.status.event.ui);
         return;
     }
-    // 从“浏览地图”页面打开
+    // 从"浏览地图"页面打开
     if (core.status.event.id == 'viewMaps') {
         fromUserAction = false;
         core.status.event.ui = core.status.event.data;
     }
     if (!this._checkStatus('book', fromUserAction, true)) return;
+    // 怪物手册仅在塔层可用
+    if (!core.canUseItem('book')) {
+        core.playSound('操作失败');
+        core.drawTip("只能在塔层使用怪物手册", 'book');
+        core.unlockControl();
+        core.status.event.data = null;
+        core.status.event.id = null;
+        return;
+    }
     core.playSound('打开界面');
     core.useItem('book', true);
-}
+};
 
 ////// 点击楼层传送器时的打开操作 //////
 events.prototype.useFly = function (fromUserAction) {

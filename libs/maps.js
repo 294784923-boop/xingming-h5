@@ -145,6 +145,11 @@ maps.prototype.extractBlocksForUI = function (map, flags) {
                 var event = (floor.events || {})[j + "," + i];
                 if (event != null && event.filter != null) filter = core.clone(event.filter);
             }
+            if (filter == null) {
+                // 回退到 tile 定义里的 filter（如 maps.js 中配置的色调）
+                var baseBlock = this.getBlockByNumber(number);
+                if (baseBlock && baseBlock.filter) filter = core.clone(baseBlock.filter);
+            }
             map.blocks.push(Object.assign({}, this.getBlockByNumber(number), { x: j, y: i, opacity: opacity, filter: filter }));
         }
     }
@@ -206,9 +211,21 @@ maps.prototype.initBlock = function (x, y, id, addInfo, eventFloor) {
     if (filter != null) block.filter = filter;
 
     if (id == 17) block.event = { "cls": "terrains", "id": "airwall", "cannotIn": ["up", "down", "left", "right"] };
-    else if (id in this.blocksInfo) block.event = JSON.parse(JSON.stringify(this.blocksInfo[id]));
+    else if (id in this.blocksInfo) {
+        var rawEvent = this.blocksInfo[id];
+        var evt = {};
+        for (var k in rawEvent) {
+            if (k !== 'filter') evt[k] = rawEvent[k];
+        }
+        block.event = JSON.parse(JSON.stringify(evt));
+    }
     else if (core.icons.getTilesetOffset(id)) block.event = { "cls": "tileset", "id": "X" + id };
     else block.event = { 'cls': 'terrains', 'id': 'none', 'noPass': false };
+
+    // 从 tile 定义中读取 filter（如 maps.js 配置的色调），同步到 block.filter
+    if (block.filter == null && id in this.blocksInfo && this.blocksInfo[id].filter) {
+        block.filter = core.clone(this.blocksInfo[id].filter);
+    }
 
     if (block.event.noPass == null) {
         if (block.event.canPass == null) {
@@ -2983,14 +3000,18 @@ maps.prototype.drawBoxAnimate = function () {
             core.clearMap(ctx, x, y, actual_width, actual_height);
             core.fillRect(ctx, x, y, actual_width, actual_height, core.material.groundPattern);
             core.strokeRect(ctx, x, y, actual_width, actual_height, 'gold', 2);
+            core.setFilter(ctx, obj.filter);
             core.drawImage(ctx, obj.bigImage, sx, sy, per_width, per_height,
                 obj.centerX - actual_width / 2, obj.centerY - actual_height / 2, actual_width, actual_height);
+            core.setFilter(ctx, null);
         } else {
             var ctx = obj.ctx || 'ui';
             core.clearMap(ctx, obj.bgx, obj.bgy, obj.bgWidth, obj.bgHeight);
             core.fillRect(ctx, obj.bgx, obj.bgy, obj.bgWidth, obj.bgHeight, core.material.groundPattern);
+            core.setFilter(ctx, obj.filter);
             core.drawImage(ctx, obj.image, core.status.globalAnimateStatus % obj.animate * 32, obj.pos,
                 32, obj.height, obj.x, obj.y, obj.dw || 32, obj.dh || obj.height);
+            core.setFilter(ctx, null);
         }
     });
     if (main.mode != 'play') core.status.boxAnimateObjs = [];

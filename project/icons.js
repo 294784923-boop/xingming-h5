@@ -207,7 +207,7 @@ var icons_4665ee12_3a1f_44a4_bea3_0fccba634dc1 =
 		"steelKey": 4,
 		"bigKey": 6,
 		"yellowGem": 19,
-		"greenPotion": 22,
+		"greenPotion": 70,
 		"lifeWand": 33,
 		"sword0": 60,
 		"sword1": 50,
@@ -245,7 +245,7 @@ var icons_4665ee12_3a1f_44a4_bea3_0fccba634dc1 =
 		"jumpShoes": 49,
 		"skill1": 30,
 		"wand": 10,
-		"pack": 46,"yellowKey":62,"blueKey":63,"redKey":64,"redGem":65,"blueGem":66,"greenGem":67,"redPotion":68,"bluePotion":69,"yellowPotion":70,"redShard":71,"blueShard":72,"greenShard":73,"greenExpBook":74,"blueExpBook":79,"redExpBook":80,"redCrystal":75,"blueCrystal":76,"goldCoin":77,"shopNpc":78},
+		"pack": 46,"yellowKey":62,"blueKey":63,"redKey":64,"redGem":65,"blueGem":66,"greenGem":67,"redPotion":68,"bluePotion":69,"yellowPotion":22,"redShard":71,"blueShard":72,"greenShard":73,"greenExpBook":74,"blueExpBook":79,"redExpBook":80,"redCrystal":75,"blueCrystal":76,"goldCoin":77,"shopNpc":78,"shopNpcMid":81,"shopNpcRight":82},
 	"autotile": {
 		"autotile": 0,
 		"autotile1": 0,

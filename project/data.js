@@ -141,8 +141,11 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"bar_exp_fill.png",
 			"bar_hp_bg.png",
 			"bar_hp_fill.png",
+			"light.png",
+			"light1.png",
 			"anim_battle_1.png",
 			"anim_battle_3.png",
+			"anim_battle_8.png",
 			"anim_battle_4.png",
 			"anim_battle_5.png",
 			"anim_battle_6.png",
@@ -168,7 +171,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"anim_battle_10.png",
 			"anim_battle_13.png",
 			"anim_battle_14.png",
-			"anim_battle_53.png"
+			"anim_battle_53.png", "anim_battle_36.png","shop_npc_big.png"
 		],
 		"tilesets": [
 			"magictower.png",
@@ -179,7 +182,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"sword",
 			"zone"
 		],
-		"bgms": ["bgm_garden.mp3", "bgm_tower1.mp3", "bgm_tower3.mp3", "bgm_extra.mp3", "bgm_title.mp3"],
+		"bgms": ["bgm_garden.mp3", "bgm_tower1.mp3", "bgm_tower3.mp3", "bgm_extra.mp3", "bgm_title.mp3", "bgm_youyoumu.mp3"],
 		"sounds": [
 			"attack.mp3",
 			"bomb.mp3",
@@ -346,7 +349,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"animFrameCount": {
 		"1": 6, "3": 6, "4": 16, "5": 12, "6": 10,
 		"7": 12, "12": 8, "15": 16, "21": 69, "24": 15,
-		"25": 10, "26": 15, "77": 75,
+		"25": 10, "26": 15, "36": 70, "77": 75,
 		"16": 40, "17": 40, "18": 40, "19": 40,
 		"39": 73, "40": 73, "78": 11, "89": 11, "94": 11, "95": 73,
 		"9": 6, "10": 4, "13": 6, "14": 20, "53": 11
@@ -711,64 +714,62 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"shops": [
 			{
 				"id": "shop1",
-				"text": "\t[贪婪之神,moneyShop]勇敢的武士啊, 给我${20+2*flag:shop1}金币就可以：",
+				"text": "\	[贪婪之神,moneyShop]勇敢的武士啊, 给我40金币就可以：",
 				"textInList": "1F金币商店",
 				"mustEnable": false,
 				"disablePreview": false,
 				"choices": [
 					{
-						"text": "生命+800",
-						"need": "status:money>=20+2*flag:shop1",
+						"text": "生命+400",
+						"need": "status:money>=40",
 						"action": [
-							{
-								"type": "comment",
-								"text": "新版商店中需要手动扣减金币和增加访问次数"
-							},
 							{
 								"type": "setValue",
 								"name": "status:money",
 								"operator": "-=",
-								"value": "20+2*flag:shop1"
-							},
-							{
-								"type": "setValue",
-								"name": "flag:shop1",
-								"operator": "+=",
-								"value": "1"
+								"value": "40"
 							},
 							{
 								"type": "setValue",
 								"name": "status:hp",
 								"operator": "+=",
-								"value": "800"
+								"value": "400"
 							}
 						]
 					},
 					{
-						"text": "攻击+4",
-						"need": "status:money>=20+2*flag:shop1",
+						"text": "攻击+1",
+						"need": "status:money>=40",
 						"action": [
-							{
-								"type": "comment",
-								"text": "新版商店中需要手动扣减金币和增加访问次数"
-							},
 							{
 								"type": "setValue",
 								"name": "status:money",
 								"operator": "-=",
-								"value": "20+2*flag:shop1"
-							},
-							{
-								"type": "setValue",
-								"name": "flag:shop1",
-								"operator": "+=",
-								"value": "1"
+								"value": "40"
 							},
 							{
 								"type": "setValue",
 								"name": "status:atk",
 								"operator": "+=",
-								"value": "4"
+								"value": "1"
+							}
+						]
+					},
+					{
+						"text": "防御+1",
+						"need": "status:money>=40",
+						"action": [
+							{
+								"type": "setValue",
+								"name": "status:money",
+								"operator": "-=",
+								"value": "40"
+							},
+							{
+								"type": "setValue",
+								"name": "status:def",
+								"operator": "+=",
+								"value": "1"
 							}
 						]
 					}
@@ -903,6 +904,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 				"enableSkill"
 		],
 		"autoScale": true,
+		"useBetweenLight": true,
 		"extendToolbar": true,
 				"flyNearStair": false,
 		"flyRecordPosition": false,

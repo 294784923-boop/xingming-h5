@@ -262,23 +262,21 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			var special = enemy.special;
 
 			// 播放战斗音效和动画
-			// 默认播放的动画；你也可以使用
-			var animate = 'hand'; // 默认动画
+			// 【星冥线】已改用击杀动画系统，此处跳过默认动画
+			var animate = null; // 原 'hand'，已移除
 			// 检查当前装备是否存在攻击动画
 			var equipId = core.getEquip(0);
 			if (equipId && (core.material.items[equipId].equip || {}).animate)
 				animate = core.material.items[equipId].equip.animate;
-			// 你也可以在这里根据自己的需要，比如enemyId或special或flag来修改播放的动画效果
-			// if (enemyId == '...') animate = '...';
 
 			// 检查该动画是否存在SE，如果不存在则使用默认音效
 			if (!(core.material.animates[animate] || {}).se)
 				core.playSound('attack.mp3');
 
 			// 播放动画；如果不存在坐标（强制战斗）则播放到勇士自身
-			if (x != null && y != null)
+			if (animate && x != null && y != null)
 				core.drawAnimate(animate, x, y);
-			else
+			else if (animate)
 				core.drawHeroAnimate(animate);
 
 			// 获得战斗伤害信息
@@ -1560,19 +1558,18 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				if (enemyId1 != null || enemyId2 != null) {
 					var leftHp = core.status.hero.hp - (damage[loc] || 0);
 					if (leftHp > 1) {
-						// 夹击伤害值
-						var value = Math.floor(leftHp / 2);
-						// 是否不超过怪物伤害值
-						if (core.flags.betweenAttackMax) {
-							var enemyDamage1 = core.getDamage(enemyId1, x, y, floorId);
-							if (enemyDamage1 != null && enemyDamage1 < value)
-								value = enemyDamage1;
-							var enemyDamage2 = core.getDamage(enemyId2, x, y, floorId);
-							if (enemyDamage2 != null && enemyDamage2 < value)
-								value = enemyDamage2;
-						}
+						// 夹击伤害值 = 两个怪物战斗伤害之和的 1/4
+						var d1 = core.getDamage(enemyId1, x, y, floorId);
+						var d2 = core.getDamage(enemyId2, x, y, floorId);
+						var btDamage1 = d1 != null ? d1 : Infinity;
+						var btDamage2 = d2 != null ? d2 : Infinity;
+						var value = Math.floor((btDamage1 + btDamage2) / 4);
 						if (value > 0) {
-							damage[loc] = (damage[loc] || 0) + value;
+							if (isFinite(value)) {
+								damage[loc] = (damage[loc] || 0) + value;
+							} else {
+								damage[loc] = Infinity;
+							}
 							type[loc] = type[loc] || {};
 							type[loc]["夹击伤害"] = true;
 						}
@@ -1738,14 +1735,11 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				core.ui.clearMap(ctx = core.dom.statusCanvasCtx); // 清空状态栏
 				// 【星冥线】背景图由CSS #statusCanvas 处理，避免随canvas拉伸变糊
 				core.ui.setFillStyle(ctx, core.status.globalAttribute.statusBarColor);
-				if (core.domStyle.isVertical) { // 竖屏 — 4列排版：楼层/HP/攻击/使役卡 | 钥匙/护盾/防御 | 金币/经验
-					// Row 0 (y=6): 楼层名 | HP | 攻击
-					core.drawImage(ctx, core.statusBar.icons.floor, 6, 6, 25, 25);
-					var fn = (core.status.thisMap || {}).name || "Loading";
-					core.ui.setFont(ctx, 'bold 14px Verdana');
-					var idx = fn.indexOf('「');
-					var title = idx > 0 ? fn.substring(0, idx) : (fn.length > 5 ? fn.substring(0, 2) : fn);
-					core.ui.fillBoldText(ctx, title, 42, 28, core.arrayToRGBA(core.status.globalAttribute.statusBarColor));
+				if (core.domStyle.isVertical) { // 竖屏 — 4列排版：等级/HP/攻击/使役卡 | 钥匙/护盾/防御 | 金币/经验
+					// Row 0 (y=6): 等级 | HP | 攻击
+					core.drawImage(ctx, core.statusBar.icons.lv || core.statusBar.icons.floor, 6, 6, 25, 25);
+					var lvText = core.getLvName ? core.getLvName() : ('Lv.' + core.status.hero.lv);
+					fill(lvText, 42, 28);
 					core.drawImage(ctx, core.statusBar.icons.hp, 137, 6, 25, 25);
 					fill(core.formatBigNumber(core.getRealStatus('hp')), 173, 26);
 					core.drawImage(ctx, core.statusBar.icons.atk, 268, 6, 25, 25);
@@ -1753,17 +1747,17 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					fill(core.formatBigNumber(atkVal), 304, 26, atkColor);
 					if (core.getFlag('sc_meizhan_active', false)) { ctx.font = 'bold 10px Verdana'; ctx.textAlign = 'left'; ctx.fillStyle = '#FFD700'; ctx.fillText('+1', 304 + ctx.measureText(core.formatBigNumber(atkVal)).width + 4, 26); ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor); }
 					ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor);
-					// Row 1 (y=38): 钥匙 | 护盾(mdef) | 防御
-						fill(core.setTwoDigits(core.itemCount('yellowKey')), 34, 58, '#FFCCAA');
-						fill(core.setTwoDigits(core.itemCount('blueKey')), 64, 58, '#AAAADD');
-						fill(core.setTwoDigits(core.itemCount('redKey')), 94, 58, '#FF8888');
+					// Row 1 (y=38): 金币 | 护盾(mdef) | 防御
+						core.drawImage(ctx, core.statusBar.icons.money, 6, 38, 25, 25);
+						fill(core.formatBigNumber(core.status.hero.money), 42, 58, '#FFFFFF');
 						core.drawImage(ctx, core.statusBar.icons.mdef, 137, 38, 25, 25);
 						fill(core.formatBigNumber(core.getRealStatus('mdef')), 173, 58, '#FFFFFF');
 						core.drawImage(ctx, core.statusBar.icons.def, 268, 38, 25, 25);
-						fill(core.formatBigNumber(core.getRealStatus('def')), 304, 58, '#FFFFFF');
-					// Row 2 (y=70): 金币 | 经验
-						core.drawImage(ctx, core.statusBar.icons.money, 6, 70, 25, 25);
-						fill(core.formatBigNumber(core.status.hero.money), 42, 90, '#FFFFFF');
+						fill(core.formatBigNumber(core.getRealStatus('def')), 304, 58, core.getFlag('crystal_blue',0) ? '#6666FF' : '#FFFFFF');
+					// Row 2 (y=70): 钥匙 | 经验
+						fill(core.setTwoDigits(core.itemCount('yellowKey')), 6, 90, '#FFCCAA');
+						fill(core.setTwoDigits(core.itemCount('blueKey')), 41, 90, '#AAAADD');
+						fill(core.setTwoDigits(core.itemCount('redKey')), 76, 90, '#FF8888');
 					core.drawImage(ctx, core.statusBar.icons.exp, 137, 70, 25, 25);
 					var need = core.getNextLvUpNeed();
 					var cur = core.status.hero.exp;
@@ -1813,7 +1807,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 							core.ui.setFont(ctx, 'bold 10px Verdana');
 							core.ui.fillBoldText(ctx, '无使役', cx + 24, cy + 48, core.arrayToRGBA([150, 150, 180, 1]));
 						}
-						} else if (!core.flags.hideLeftStatusBar) { // 横屏且未隐藏状态栏
+					} else if (!core.flags.hideLeftStatusBar) { // 横屏且未隐藏状态栏
 					core.drawImage(ctx, core.statusBar.icons.floor, 6, 9, 25, 25);
 							// 【星冥线】楼名换行显示（「」处分行：上行=塔名+楼层，下行=副标题）
 							var fn = (core.status.thisMap || {}).name || "Loading";
