@@ -31,8 +31,8 @@ main.floors.f3_4=
 ],
     "firstArrive": [],
     "events": {
-        "5,11": ["\\t[幽幽子,face_yuyuko_02.png]拿到我身后的那本经验书，你就可以升级了。", "\\t[妖梦,face_youmu_04.png]终于能变强一点了吗……", "\\t[幽幽子,face_yuyuko_00.png]升级之后，可以选择提升1点攻击或1点防御。", "\\t[妖梦,face_youmu_04.png]只能选一种啊。", "\\t[幽幽子,face_yuyuko_00.png]嗯。按住D键看看吧。", "\\t[妖梦,face_youmu_04.png]这是……怪物伤害？", "\\t[幽幽子,face_yuyuko_02.png]会显示提升属性后，能够减少多少来自怪物的伤害。", "\\t[幽幽子,face_yuyuko_01.png]左上角显示的是提升1点攻击的收益，左中间则是提升1点防御的收益。", "\\t[妖梦,face_youmu_00.png]原来如此……这样就能直接比较收益了。", "\\t[幽幽子,face_yuyuko_00.png]哪个减少的伤害更多，对应的数值就会变色。", "\\t[幽幽子,face_yuyuko_02.png]攻击收益更高时，攻击收益值会显示成红色；防御收益更高时，则防御收益值会显示成蓝色。", "\\t[妖梦,face_youmu_04.png]还真是很直白的提示呢。", "\\t[幽幽子,face_yuyuko_00.png]对于现在这些怪物来说，提升攻击的收益会更高一些。", "\\t[幽幽子,face_yuyuko_01.png]所以，这次就先选择提升1点攻击吧。", "\\t[妖梦,face_youmu_03.png]总觉得您已经替我决定好了……",
-            {"type": "hide", "remove": true}]
+         "5,11": [{"type": "if", "condition": "flag:yuyuko_f3_4", "true": [{"type": "exit"}]}, "\\t[幽幽子,face_yuyuko_02.png]拿到我身后的那本经验书，你就可以升级了。", "\\t[妖梦,face_youmu_04.png]终于能变强一点了吗……", "\\t[幽幽子,face_yuyuko_00.png]升级之后，可以选择提升1点攻击或1点防御。", "\\t[妖梦,face_youmu_04.png]只能选一种啊。", "\\t[幽幽子,face_yuyuko_00.png]嗯。按住D键看看吧。", "\\t[妖梦,face_youmu_04.png]这是……怪物伤害？", "\\t[幽幽子,face_yuyuko_02.png]会显示提升属性后，能够减少多少来自怪物的伤害。", "\\t[幽幽子,face_yuyuko_01.png]左上角显示的是提升1点攻击的收益，左中间则是提升1点防御的收益。", "\\t[妖梦,face_youmu_00.png]原来如此……这样就能直接比较收益了。", "\\t[幽幽子,face_yuyuko_00.png]哪个减少的伤害更多，对应的数值就会变色。", "\\t[幽幽子,face_yuyuko_02.png]攻击收益更高时，攻击收益值会显示成红色；防御收益更高时，则防御收益值会显示成蓝色。", "\\t[妖梦,face_youmu_04.png]还真是很直白的提示呢。", "\\t[幽幽子,face_yuyuko_00.png]对于现在这些怪物来说，提升攻击的收益会更高一些。", "\\t[幽幽子,face_yuyuko_01.png]所以，这次就先选择提升1点攻击吧。", "\\t[妖梦,face_youmu_03.png]总觉得您已经替我决定好了……",
+            {"type": "function", "function": "function(){core.setFlag('yuyuko_f3_4',1)}"}, {"type": "hide", "remove": true}]
     },
     "changeFloor": {"3,12": {"floorId": "f3_5", "loc": [3, 2]}, "11,2": {"floorId": "f3_3", "loc": [11, 2]}},
     "afterBattle": {},

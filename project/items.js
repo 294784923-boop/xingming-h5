@@ -544,5 +544,5 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 	"redExpBook": {"cls":"items","name":"高级经验书","text":"记载着奥义的书卷。经验+20。","itemEffect":"(function(){core.status.hero.exp+=20;core.insertAction({type:\"tip\",text:\"经验+20\"})})();"},
 	"redCrystal": {"cls":"tools","name":"红水晶","text":"散发着微光的红色水晶。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12});core.addStatus('atk',1);core.setFlag('crystal_red',1);core.drawTip('攻击力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
 	"blueCrystal": {"cls":"tools","name":"蓝水晶","text":"散发着微光的蓝色水晶。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12});core.addStatus('def',1);core.setFlag('crystal_blue',1);core.drawTip('防御力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
-	"goldCoin": {"cls":"constants","name":"金币","text":"闪闪发光的金币。","itemEffect":"(function(){core.status.hero.money+=20;core.insertAction({type:\"tip\",text:\"金币+20\"})})();"},
+	"goldCoin": {"cls":"items","name":"金币","text":"闪闪发光的金币。","itemEffect":"(function(){core.status.hero.money+=20;core.insertAction({type:\"tip\",text:\"金币+20\"})})();","itemEffectTip":"，金币+20"},
 }

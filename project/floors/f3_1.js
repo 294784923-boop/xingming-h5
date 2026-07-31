@@ -34,7 +34,7 @@ main.floors.f3_1=
 ],
     "firstArrive": [],
     "events": {
-        "11,9": [
+         "11,9": [{"type": "if", "condition": "flag:yuyuko_f3_1", "true": [{"type": "exit"}]}, 
             "\\t[幽幽子,face_yuyuko_00.png]看到左边的那些道具了吗？",
             "\\t[幽幽子,face_yuyuko_00.png]那些都是符卡展开时残留的异象，它们并非真正的事物，只是在符卡之中，被短暂留下的痕迹。若能触碰到，便能从中取回一点力量；若被阻挡，则说明这一层的故事，还未结束。",
             "\\t[幽幽子,face_yuyuko_01.png]血瓶是生命被符卡重新折叠成可取回的碎片，其中红血瓶能提供50点HP，蓝血瓶能提供120点HP，黄血瓶能提供350点HP，绿血瓶能提供1000点HP。",
@@ -54,7 +54,7 @@ main.floors.f3_1=
                 "function": "function(){core.status.hero.items.constants.fly=1;core.updateStatusBar()}"
             },
             "获得了【楼层传送器】！按G键可以在已访问的楼层间传送。",
-            {"type": "hide", "remove": true}
+            {"type": "function", "function": "function(){core.setFlag('yuyuko_f3_1',1)}"}, {"type": "hide", "remove": true}
         ]
     },
     "changeFloor": {

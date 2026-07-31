@@ -34,7 +34,7 @@ main.floors.f3_3=
 ],
     "firstArrive": [],
     "events": {
-        "10,3": [
+         "10,3": [{"type": "if", "condition": "flag:yuyuko_f3_3", "true": [{"type": "exit"}]}, 
             "\\t[幽幽子,face_yuyuko_00.png]刚才和【石怪】战斗时，如果你没有把战斗速度调到 10，应该能看到一件事。",
             "\\t[妖梦,face_youmu_04.png]什么事？",
             "\\t[幽幽子,face_yuyuko_02.png]战斗开始时，触发了属性协同，获得了 10 点护盾。",
@@ -51,7 +51,7 @@ main.floors.f3_3=
             "\\t[幽幽子,face_yuyuko_02.png]差不多。",
             "\\t[妖梦,face_youmu_03.png]这听起来一点都不轻松……",
             "\\t[幽幽子,face_yuyuko_00.png]所以才要好好看着自己的 HP 哦。",
-            {"type": "hide", "remove": true}
+            {"type": "function", "function": "function(){core.setFlag('yuyuko_f3_3',1)}"}, {"type": "hide", "remove": true}
         ]
     },
     "changeFloor": {

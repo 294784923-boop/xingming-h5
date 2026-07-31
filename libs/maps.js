@@ -2301,6 +2301,7 @@ maps.prototype.setBlock = function (number, x, y, floorId) {
     else {
         originBlock.id = number;
         originBlock.event = block.event;
+        originBlock.filter = block.filter;
         block = originBlock;
     }
     this._updateMapArray(floorId, x, y);
