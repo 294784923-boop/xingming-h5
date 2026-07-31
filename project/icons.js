@@ -223,7 +223,7 @@ var icons_4665ee12_3a1f_44a4_bea3_0fccba634dc1 =
 		"shield5": 59,
 		"book": 9,
 		"fly": 12,
-		"shiyiRing": 13,
+		"shiyiRing": 83,
 		"pickaxe": 45,
 		"icePickaxe": 44,
 		"bomb": 43,

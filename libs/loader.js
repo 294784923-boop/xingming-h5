@@ -427,10 +427,11 @@ loader.prototype._loadMusic_async = function (onprogress, onfinished) {
 
 loader.prototype.loadOneMusic = function (name) {
     var music = new Audio();
-    music.preload = 'none';
+    music.preload = 'auto';
     if (main.bgmRemote) music.src = main.bgmRemoteRoot + core.firstData.name + '/' + name;
     else music.src = 'project/bgms/' + name;
     music.loop = 'loop';
+    music.load();
     core.material.bgms[name] = music;
 }
 

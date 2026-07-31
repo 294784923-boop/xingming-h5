@@ -234,6 +234,7 @@ var maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
 	"335": {"cls":"items","id":"redCrystal","name":"红水晶"},
 	"336": {"cls":"items","id":"blueCrystal","name":"蓝水晶"},
 	"337": {"cls":"items","id":"goldCoin","name":"金币"},
+	"341": {"cls":"items","id":"shiyiRing","name":"使役之杖"},
 	"338": {"cls":"npc48","id":"shopNpc","name":"商店","bigImage":"shop_npc_big.png","faceIds":{"down":"shopNpc"}},
 	"400": {"cls":"enemys","id":"e403","name":"幽幽子","faceIds":{"down":"e403"}},
 

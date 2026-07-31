@@ -465,6 +465,30 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			core.setFlag('shiyi_enemy_id', 0);
 			// animFrameCount
 			core.animFrameCount = {"1":6,"3":6,"4":16,"5":12,"6":10,"7":12,"9":6,"10":4,"12":8,"13":6,"14":20,"15":16,"16":40,"17":40,"18":40,"19":40,"21":69,"24":15,"25":10,"26":15,"36":70,"39":73,"40":73,"8":6,"53":11,"77":75,"78":11,"89":11,"94":11,"95":73};
+			// 【星冥线】战斗动画SE：RGM动画ID → 音效文件（取RGM timing的SE；字符串=第0帧，对象=逐帧映射）
+			core.animSe = {
+				"1": "101-Attack13.mp3",
+				"3": "086-Action01.mp3",
+				"4": "shengji.mp3",
+				"5": "132-Wind01.mp3",
+				"6": "108-Heal04.mp3",
+				"7": "117-Fire01.mp3",
+				"8": "100-Attack12.mp3",
+				"9": "151-Support09.mp3",
+				"12": "094-Attack06.mp3",
+				"13": "138-Darkness01.mp3",
+				"14": "140-Darkness03.mp3",
+				"15": "140-Darkness03.mp3",
+				"21": "se_enep01.mp3",
+				"24": "020-Teleport03.mp3",
+				"25": "124-Thunder02.mp3",
+				"26": "121-Ice02.mp3",
+				"36": "018-Teleport01.mp3",
+				"53": "111-Heal07.mp3",
+				"77": {0: "dibiyong1.mp3", 29: "teshu2.mp3", 34: "teshu2.mp3", 37: "teshu2.mp3", 42: "teshu2.mp3", 44: "teshu2.mp3", 50: "teshu2.mp3", 55: "teshu2.mp3", 59: "teshu2.mp3", 63: "teshu2.mp3", 68: "teshu2.mp3", 71: "teshu2.mp3"}
+			};
+			// 【星冥线】地格动画SE（传送门等）：RGM动画ID → 音效文件
+			core.tileAnimSe = {"78": "chuansong.mp3", "89": "chuansong.mp3", "94": "chuansong.mp3"};
 			// 预加载战斗动画图片到 core._animImages（直接new Image，不走core.material.images.images）
 			core._animImages = {};
 			[1,3,4,5,6,7,8,9,10,12,13,14,15,21,24,25,26,36,53,77].forEach(function(id) {
@@ -536,6 +560,9 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				var hpGain = hero.lv * 10 + 140;
 				hero.hp += hpGain;
 				core.setFlag('expThreshold', threshold + 8);
+				// 【星冥线】升级动画：RGM 4号「升级」（16帧 + 第0帧SE「shengji」）+ 第5帧全屏白光
+				core.playBattleAnim(4, {fps: 15});
+				core.screenFlash({delay: 340, hold: 260, fade: 200});
 				var lvMsg = "升级至" + hero.lv + "级，HP +" + hpGain + "! 请选择：";
 				core.insertAction([
 					{type: "choices", text: lvMsg, choices: [
@@ -577,17 +604,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 符卡总入口
 			core.useSpellCard = function(idx) { if (!core.isPlaying()||(core.status.event&&core.status.event.id)) return; if (!core.getFlag('sc_'+idx+'_avail',false)) { core.drawTip('该符卡已使用'); return; } if (idx===1) core._sc1(); else if (idx===2) core._sc2(); else if (idx===3) core._sc3(); };
 			// 瞑斩: 攻击+1持续6回合
-			core._sc1 = function() { var _sc=this; core._showSkillImage('youmuskill1.png', function(){ core.playSound('zone'); core.setFlag('sc_1_avail',false); core.setFlag('sc_meizhan_active',true); core.setFlag('sc_meizhan_turns',6); core.playBattleAnim(12,{fps:12}); core.updateDamage(); core.drawTip(core._SC_FULL[0]); core.ui.drawStatusBar(); }); };
+			core._sc1 = function() { var _sc=this; core._showSkillImage('youmuskill1.png', function(){ core.playSound('zone'); core.setFlag('sc_1_avail',false); core.setFlag('sc_meizhan_active',true); core.setFlag('sc_meizhan_turns',6); core.playBattleAnim(12,{fps:12}); core.updateDamage(); core.drawTip(core._SC_FULL[0]); core.ui.drawStatusBar(); if (core.plugin&&core.plugin.autoClean) core.plugin.autoClean.doAutoClean(); }); };
 			// 断迷剑: 斩断面前一堵墙
-			core._sc2 = function() { var h=core.status.hero; if(!h)return; var d=h.loc&&h.loc.direction,dx=0,dy=0; if(d==='up')dy=-1;else if(d==='down')dy=1;else if(d==='left')dx=-1;else if(d==='right')dx=1; var tx=h.loc.x+dx,ty=h.loc.y+dy; var block=core.getBlock(tx,ty); if(!block||!block.event||!block.event.noPass||block.event.cls!=='tileset'){core.drawTip('必须面对一堵墙方能使用');return;} core._showSkillImage('youmuskill2.png', function(){ core.playSound('pickaxe'); core.setFlag('sc_2_avail',false); core.setBlock(0,tx,ty); core.playBattleAnim(5,{tx:tx,ty:ty,fps:12}); core.drawTip(core._SC_FULL[1]); core.ui.drawStatusBar(); }); };
+			core._sc2 = function() { var h=core.status.hero; if(!h)return; var d=h.loc&&h.loc.direction,dx=0,dy=0; if(d==='up')dy=-1;else if(d==='down')dy=1;else if(d==='left')dx=-1;else if(d==='right')dx=1; var tx=h.loc.x+dx,ty=h.loc.y+dy; var block=core.getBlock(tx,ty); if(!block||!block.event||!block.event.noPass||block.event.cls!=='tileset'){core.drawTip('必须面对一堵墙方能使用');return;} core._showSkillImage('youmuskill2.png', function(){ core.playSound('pickaxe'); core.setFlag('sc_2_avail',false); core.setBlock(0,tx,ty); core.playBattleAnim(5,{tx:tx,ty:ty,fps:12}); core.drawTip(core._SC_FULL[1]); core.ui.drawStatusBar(); if (core.plugin&&core.plugin.autoClean) core.plugin.autoClean.doAutoClean(); }); };
 			// 魂符: 镜像+传送
-			core._sc3 = function() { var h=core.status.hero; if(!h)return; var toX=core.bigmap.width-1-h.loc.x,toY=core.bigmap.height-1-h.loc.y; if(toX<0||toX>=core.bigmap.width||toY<0||toY>=core.bigmap.height){core.drawTip('无法位移至该位置');return;} var blk=core.getBlock(toX,toY); if(blk&&blk.event&&blk.event.noPass){core.drawTip('无法位移至该位置');return;} core._showSkillImage('youmuskill3.png', function(){ core.playSound('centerFly'); core.setFlag('sc_3_avail',false); core.clearMap('hero'); core.setHeroLoc('x',toX); core.setHeroLoc('y',toY); core.drawHero(); core.playBattleAnim(6,{fps:12}); core.drawTip(core._SC_FULL[2]); core.ui.drawStatusBar(); }); };
+			core._sc3 = function() { var h=core.status.hero; if(!h)return; var toX=core.bigmap.width-1-h.loc.x,toY=core.bigmap.height-1-h.loc.y; if(toX<0||toX>=core.bigmap.width||toY<0||toY>=core.bigmap.height){core.drawTip('无法位移至该位置');return;} var blk=core.getBlock(toX,toY); if(blk&&blk.event&&blk.event.noPass){core.drawTip('无法位移至该位置');return;} core._showSkillImage('youmuskill3.png', function(){ core.playSound('centerFly'); core.setFlag('sc_3_avail',false); core.clearMap('hero'); core.setHeroLoc('x',toX); core.setHeroLoc('y',toY); core.drawHero(); core.playBattleAnim(6,{fps:12}); core.drawTip(core._SC_FULL[2]); core.ui.drawStatusBar(); if (core.plugin&&core.plugin.autoClean) core.plugin.autoClean.doAutoClean(); }); };
 		// 【星冥线】技能插图：画面中央显示，1.5秒后消失
 			core._showSkillImage = function(imgName, onDone) {
 				var gd = core.dom && core.dom.gameDraw; if (!gd) return;
 				var imgs = core.material && core.material.images && core.material.images.images; if (!imgs) return;
 				var img = imgs[imgName]; if (!img) return;
-				var SIZE = 416;
+				// 自适应屏幕尺寸：插图占视口短边的50%，最小200px
+				var gdRect = gd.getBoundingClientRect();
+				var gdW = gdRect.width;
+				var gdH = gdRect.height;
+				var SIZE = Math.max(200, Math.round(Math.min(gdW, gdH) * 0.5));
 				// 黑色柔雾遮罩（复刻RGM fog效果）
 				var overlay = document.createElement('div');
 				overlay.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0);z-index:199;pointer-events:none;transition:background 0.5s ease;';
@@ -598,7 +629,6 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				cv.style.cssText = 'position:absolute;top:50%;z-index:200;pointer-events:none;';
 				var ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0, SIZE, SIZE);
 				gd.appendChild(cv);
-				var gdW = gd.getBoundingClientRect().width;
 				var centerX = (gdW - SIZE) / 2;
 				var centerY = -SIZE / 2;
 				var startTime = performance.now();
@@ -634,6 +664,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				}
 				requestAnimationFrame(anim);
 			};
+		// 【星冥线】全屏闪光工具（对应 RGM timing 的 flash_scope=1 全屏闪光）
+			core.screenFlash = function(opts) {
+				opts = opts || {};
+				var gd = core.dom && core.dom.gameDraw; if (!gd) return;
+				var fl = document.createElement('div');
+				fl.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;background:' + (opts.color || '#fff') + ';opacity:0;pointer-events:none;z-index:190;';
+				gd.appendChild(fl);
+				var delay = opts.delay || 0, hold = opts.hold != null ? opts.hold : 250, fade = opts.fade != null ? opts.fade : 200;
+				var peak = opts.opacity != null ? opts.opacity : 0.8;
+				setTimeout(function () { fl.style.opacity = '' + peak; }, delay);
+				setTimeout(function () { fl.style.transition = 'opacity ' + fade + 'ms ease-out'; fl.style.opacity = '0'; }, delay + hold);
+				setTimeout(function () { if (fl.parentNode) fl.parentNode.removeChild(fl); }, delay + hold + fade + 100);
+			};
 		// 【星冥线】战斗动画播放器 - 在角色位置播放RGM动画spritesheet
 			core.playBattleAnim = function(animId, opts) {
 				opts = opts || {};
@@ -668,10 +711,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				var frameIdx = 0;
 				var lastTime = performance.now();
 				var done = false;
+				var sePlayed = false;
 				function tick(now) {
 					if (done) return;
 					if (now - lastTime >= frameInterval) {
+						// 【星冥线】RGM动画timing SE：字符串=第0帧播一次，对象=按帧号播对应SE
+						var _se = core.animSe && core.animSe[animId];
+						if (_se) {
+							if (typeof _se == 'string') {
+								if (!sePlayed) { sePlayed = true; core.playSound(_se); }
+							} else if (_se[frameIdx]) {
+								core.playSound(_se[frameIdx]);
+							}
+						}
 						ctx.clearRect(0, 0, drawW, drawH);
+						if (opts.filter) ctx.filter = opts.filter;
 						var sx = frameIdx * FRAME_W;
 						ctx.drawImage(img, sx, 0, FRAME_W, FRAME_H, 0, 0, drawW, drawH);
 						frameIdx++;
@@ -708,7 +762,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				cv.style.cssText = 'position:absolute;pointer-events:none;z-index:35;';
 				gd.appendChild(cv);
 				var ctx = cv.getContext('2d');
-				var frameIdx = 0, lastTime = performance.now(), done = false;
+				var frameIdx = 0, lastTime = performance.now(), done = false, sePlayed = false;
 				var animObj = {cv:cv, x:x, y:y, done:false};
 				core._tileAnims.push(animObj);
 				function tick(now) {
@@ -725,6 +779,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 					cv.style.width = Math.round(TILE * scale) + 'px';
 					cv.style.height = Math.round(TILE * scale) + 'px';
 					if (now - lastTime >= frameInterval) {
+						// 【星冥线】地格动画SE：第0帧播一次（RGM timing frame0）
+						if (!sePlayed) {
+							sePlayed = true;
+							var _tse = core.tileAnimSe && core.tileAnimSe[animId];
+							if (_tse) core.playSound(_tse);
+						}
 						ctx.clearRect(0, 0, TILE, TILE);
 						var sx = (frameIdx % fc) * TILE;
 						ctx.drawImage(img, sx, 0, TILE, TILE, 0, 0, TILE, TILE);
@@ -794,7 +854,30 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 			return false;
 		};
-		// 【东方星冥线】塔层全景滚动+雾效 (复刻 script126/127 配置)
+		// 【东方星冥线】使役捕获光环 — 挂进 drawHero 调用链，移动中与角色同帧同偏移绘制（消除 bgTick 读格坐标导致的滞后）
+	(function () {
+		var _dh = control.prototype.drawHero;
+		control.prototype.drawHero = function (status, offset, frame) {
+			_dh.apply(this, arguments);
+			try {
+				if (!core.isPlaying() || !core.getFlag('shiyi_mode', 0)) return;
+				var haloImg = core.material.images.images['shiyi.png'];
+				if (!haloImg) return;
+				if (!core.dymCanvas.shiyiHalo)
+					core.createCanvas('shiyiHalo', 0, 0, core._PX_, core._PY_, 35);
+				var hc = core.dymCanvas.shiyiHalo;
+				if (!hc) return;
+				hc.clearRect(0, 0, core._PX_, core._PY_);
+				var x = core.getHeroLoc('x'), y = core.getHeroLoc('y');
+				var way = core.utils.scan2[core.getHeroLoc('direction')] || { x: 0, y: 0 };
+				var off = typeof offset == 'number' ? offset : (offset && typeof offset.offset == 'number' ? offset.offset : 0);
+				hc.drawImage(haloImg, x * 32 - core.bigmap.offsetX + way.x * off - 32, y * 32 - core.bigmap.offsetY + way.y * off - 32);
+			} catch (e) {
+				console.error('shiyiHalo draw error:', e);
+			}
+		};
+	})();
+	// 【东方星冥线】塔层全景滚动+雾效 (复刻 script126/127 配置)
 		// 全景: 纵向向上 3/8px/帧 = 15px/s; 雾: 右0.5/8 + 上1/8 px/帧 = 右2.5 + 上5 px/s, 200%放大 25%透明
 		var PANO_SPEED_Y = 15, FOG_SPEED_X = 2.5, FOG_SPEED_Y = 5;
 		function isTower(fid) { return fid && (fid.indexOf('f1_') === 0 || fid.indexOf('f3_') === 0); }
@@ -807,7 +890,11 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (!core.dymCanvas.panoBg) core.createCanvas('panoBg', 0, 0, core._PX_, core._PY_, -1);
 			var panoCv = core.dymCanvas.panoBg;
 			if (!panoCv) return;
-			var pano = core.material.images.images['pano_' + fid + '.png'];
+			var panoName = 'pano_' + fid + '.png';
+			// 远景精简: 同组楼层共用一张图(烘焙按层复制,内容相同), 重复文件已删除
+			if (fid.indexOf('f3_') === 0) panoName = parseInt(fid.split('_')[1], 10) <= 5 ? 'pano_f3_0.png' : 'pano_f3_6.png';
+			else if (fid.indexOf('f1_') === 0 && parseInt(fid.split('_')[1], 10) >= 6) panoName = 'pano_f1_6.png';
+			var pano = core.material.images.images[panoName];
 			var w = core._PX_, h = core._PY_;
 			panoCv.clearRect(0, 0, w, h);
 			if (pano && isTower(fid)) {
@@ -842,17 +929,21 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				for (var y = -offY2; y < h; y += H)
 					fogCv.drawImage(fog, 0, 0, fog.width, fog.height, x, y, W, H);
 			fogCv.globalAlpha = 1;
-			// --- 使役捕获光环 ---
+			// --- 使役捕获光环（静止兜底；移动中由 drawHero 钩子同步绘制，消除慢半拍） ---
 			var haloImg = core.material.images.images['shiyi.png'];
 			if (core.getFlag('shiyi_mode', 0) && haloImg) {
-				if (!core.dymCanvas.shiyiHalo) {
-					core.createCanvas('shiyiHalo', 0, 0, core._PX_, core._PY_, 35);
+				if ((core.status.heroMoving || 0) === 0) {
+					if (!core.dymCanvas.shiyiHalo) {
+						core.createCanvas('shiyiHalo', 0, 0, core._PX_, core._PY_, 35);
+					}
+					var hc = core.dymCanvas.shiyiHalo;
+					if (hc) {
+						hc.clearRect(0, 0, core._PX_, core._PY_);
+						var hx = core.getHeroLoc('x'), hy = core.getHeroLoc('y');
+						hc.drawImage(haloImg, hx * 32 - core.bigmap.offsetX - 32, hy * 32 - core.bigmap.offsetY - 32);
+					}
 				}
-				var hc = core.dymCanvas.shiyiHalo;
-				hc.clearRect(0, 0, core._PX_, core._PY_);
-				var hx = core.getHeroLoc('x'), hy = core.getHeroLoc('y');
-				var ox = core.bigmap.offsetX, oy = core.bigmap.offsetY;
-				hc.drawImage(haloImg, hx * 32 - ox - 32, hy * 32 - oy - 32);
+				// heroMoving>0 时不动画布：移动中的每帧由 drawHero 钩子 clear+重绘（同帧同偏移）
 			} else if (core.dymCanvas.shiyiHalo) {
 				core.dymCanvas.shiyiHalo.clearRect(0, 0, core._PX_, core._PY_);
 			}
@@ -923,10 +1014,13 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			}
 		}
 		// 【东方星冥线】塔层BGM (原版: 庭园=开场, 1塔=二色莲传说~rum, 3塔=妖妖的梦) — 文件名必须ASCII(启动服务.exe对CJK名404)
+		// 楼层文件里显式配置的 bgm 优先（如樱塔7F~12F=bgm_youyoumu.mp3），空串/未配置才回退塔默认
 		var BGM_OF = function (fid) {
-			if (fid === 'f0_garden') return ['bgm_garden.mp3', 0.8];
-			if (fid && fid.indexOf('f1_') === 0) return ['bgm_tower1.mp3', 1.0];
-			if (fid && fid.indexOf('f3_') === 0) return ['bgm_tower3.mp3', 0.4];
+			var fb = null;
+			try { fb = fid ? core.floors[fid].bgm : null; } catch (e) { fb = null; }
+			if (fid === 'f0_garden') return [fb || 'bgm_garden.mp3', 0.8];
+			if (fid && fid.indexOf('f1_') === 0) return [fb || 'bgm_tower1.mp3', 1.0];
+			if (fid && fid.indexOf('f3_') === 0) return [fb || 'bgm_tower3.mp3', 0.4];
 			return null;
 		};
 		var lastBgmKey = null;
@@ -5331,6 +5425,16 @@ function _installHooks() {
     core.events.afterOpenDoor = function (doorId, x, y) {
         if (_origAfterOpenDoor) _origAfterOpenDoor.call(this, doorId, x, y);
         if (main.mode === 'play') doAutoClean();
+    };
+
+    // --- 事件结束（NPC对话/剧情结束后）清理 ---
+    // _doAction_finishEvents 返回 true 表示事件流已结束（closePanel 已清空
+    // event.id，此处走 doAutoClean 的直接 BFS 路径，不会触发 insertAction 分支）
+    var _origFinishEvents = core.events._doAction_finishEvents;
+    core.events._doAction_finishEvents = function () {
+        var done = _origFinishEvents ? _origFinishEvents.call(this) : true;
+        if (done && main.mode === 'play') doAutoClean();
+        return done;
     };
 
     // --- _checkBlock_repulse：推开阻击后清理 ---

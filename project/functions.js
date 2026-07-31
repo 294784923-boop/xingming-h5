@@ -140,7 +140,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			if (core.status.maps[floorId].bgm) {
 				var bgm = core.status.maps[floorId].bgm;
 				if (bgm instanceof Array) bgm = bgm[Math.floor(Math.random() * bgm.length)]; // 多个bgm则随机播放一个
-				if (!core.hasFlag("__bgm__")) core.playBgm(bgm);
+				console.log("[BGM-DEBUG] changingFloor", floorId, "bgm=", bgm, "playingBgm=", core.musicStatus.playingBgm, "materialBgms[bgm]=", !!core.material.bgms[bgm]);
+				core.playBgm(bgm);
 			} else if (fromLoad && !core.hasFlag("__bgm__")) {
 				core.pauseBgm();
 			}
@@ -270,7 +271,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				animate = core.material.items[equipId].equip.animate;
 
 			// 检查该动画是否存在SE，如果不存在则使用默认音效
-			if (!(core.material.animates[animate] || {}).se)
+			// 【星冥线】击杀动画(playBattleAnim)自带SE时不再播默认攻击音，避免双响
+			var killAnimId = core.getFlag('char_kill_anim', 8);
+			if (!(core.material.animates[animate] || {}).se && !(core.animSe || {})[killAnimId])
 				core.playSound('attack.mp3');
 
 			// 播放动画；如果不存在坐标（强制战斗）则播放到勇士自身

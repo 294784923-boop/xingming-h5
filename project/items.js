@@ -310,9 +310,9 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"canUseItemEffect": "(function(){var fid=core.status.floorId;return fid&&(fid.indexOf('f1_')===0||fid.indexOf('f3_')===0);})()"
 	},
 	"shiyiRing": {
-		"cls": "constants",
-		"name": "使役之环",
-		"text": "开启/关闭使役捕获模式。开启后击败怪物会自动捕获，再次使用关闭。",
+		"cls": "tools",
+		"name": "使役之杖",
+		"text": "寄宿着某种妖力的魔杖。使用后进入使役模式，击败怪物后该怪物将会化为使役随从。",
 		"useItemEffect": "(function(){\n\tif(core.getFlag('shiyi_mode',0)){\n\t\tcore.removeFlag('shiyi_mode');\n\t\tcore.drawTip('捕获模式已关闭');\n\t}else{\n\t\tcore.setFlag('shiyi_mode',1);\n\t\tcore.drawTip('捕获模式已开启');\n\t}\n})();",
 		"canUseItemEffect": "true"
 	},
@@ -539,10 +539,10 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 	"redShard": {"cls":"items","name":"红碎片","text":"红色的宝石碎片。集齐6个可合成红宝石效果(攻击力+1)。","itemEffect":"(function(){var h=core.status.hero;h._rShard=(h._rShard||0)+1;var c=h._rShard;if(c>=6){h._rShard=0;core.addStatus('atk',1);core.insertAction({type:'tip',text:'红碎片合成！攻击力+1'});core.updateStatusBar();core.ui.drawStatusBar();}else{core.insertAction({type:'tip',text:'获得红碎片！('+c+'/6)'});}})();"},
 	"blueShard": {"cls":"items","name":"蓝碎片","text":"蓝色的宝石碎片。集齐6个可合成蓝宝石效果(防御力+1)。","itemEffect":"(function(){var h=core.status.hero;h._bShard=(h._bShard||0)+1;var c=h._bShard;if(c>=6){h._bShard=0;core.addStatus('def',1);core.insertAction({type:'tip',text:'蓝碎片合成！防御力+1'});core.updateStatusBar();core.ui.drawStatusBar();}else{core.insertAction({type:'tip',text:'获得蓝碎片！('+c+'/6)'});}})();"},
 	"greenShard": {"cls":"items","name":"绿碎片","text":"绿色的宝石碎片。集齐6个可合成绿宝石效果(护盾+6)。","itemEffect":"(function(){var h=core.status.hero;h._gShard=(h._gShard||0)+1;var c=h._gShard;if(c>=6){h._gShard=0;core.addStatus('mdef',6);core.insertAction({type:'tip',text:'绿碎片合成！护盾+6'});core.updateStatusBar();core.ui.drawStatusBar();}else{core.insertAction({type:'tip',text:'获得绿碎片！('+c+'/6)'});}})();"},
-	"greenExpBook": {"cls":"items","name":"初级经验书","text":"记载着战斗心得的书卷。经验+2。","itemEffect":"(function(){core.status.hero.exp+=2;core.insertAction({type:\"tip\",text:\"经验+2\"})})();"},
-	"blueExpBook": {"cls":"items","name":"中级经验书","text":"记载着进阶心得的书卷。经验+6。","itemEffect":"(function(){core.status.hero.exp+=6;core.insertAction({type:\"tip\",text:\"经验+6\"})})();"},
-	"redExpBook": {"cls":"items","name":"高级经验书","text":"记载着奥义的书卷。经验+20。","itemEffect":"(function(){core.status.hero.exp+=20;core.insertAction({type:\"tip\",text:\"经验+20\"})})();"},
-	"redCrystal": {"cls":"tools","name":"红水晶","text":"散发着微光的红色水晶。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12});core.addStatus('atk',1);core.setFlag('crystal_red',1);core.drawTip('攻击力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
-	"blueCrystal": {"cls":"tools","name":"蓝水晶","text":"散发着微光的蓝色水晶。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12});core.addStatus('def',1);core.setFlag('crystal_blue',1);core.drawTip('防御力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
+	"greenExpBook": {"cls":"items","name":"初级经验书","text":"记载着战斗心得的书卷。经验+2。","itemEffect":"(function(){core.status.hero.exp+=2;core.checkLevelUp();core.insertAction({type:\"tip\",text:\"经验+2\"})})();"},
+	"blueExpBook": {"cls":"items","name":"中级经验书","text":"记载着进阶心得的书卷。经验+6。","itemEffect":"(function(){core.status.hero.exp+=6;core.checkLevelUp();core.insertAction({type:\"tip\",text:\"经验+6\"})})();"},
+	"redExpBook": {"cls":"items","name":"高级经验书","text":"记载着奥义的书卷。经验+20。","itemEffect":"(function(){core.status.hero.exp+=20;core.checkLevelUp();core.insertAction({type:\"tip\",text:\"经验+20\"})})();"},
+	"redCrystal": {"cls":"tools","name":"红水晶","text":"散发着微光的红色水晶。使用后攻击力+1，仅持续一场战斗。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12,filter:'hue-rotate(150deg)'});core.addStatus('atk',1);core.setFlag('crystal_red',1);core.drawTip('攻击力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
+	"blueCrystal": {"cls":"tools","name":"蓝水晶","text":"散发着微光的蓝色水晶。使用后防御力+1，仅持续一场战斗。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12});core.addStatus('def',1);core.setFlag('crystal_blue',1);core.drawTip('防御力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
 	"goldCoin": {"cls":"items","name":"金币","text":"闪闪发光的金币。","itemEffect":"(function(){core.status.hero.money+=20;core.insertAction({type:\"tip\",text:\"金币+20\"})})();","itemEffectTip":"，金币+20"},
 }

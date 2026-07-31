@@ -423,6 +423,7 @@ control.prototype.clearStatus = function () {
         core.interval[i] = null;
     }
     core.status = {};
+    core.status.preview = {};
     core.clearStatusBar();
     core.deleteAllCanvas();
     core.status.played = false;
