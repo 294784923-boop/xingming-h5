@@ -302,6 +302,12 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.status.hero.statistics.battle++;
 			// 【RGM新增】死怪计数（怨恨特性用）
 			core.setFlag('deadMonsterCount', (core.getFlag('deadMonsterCount', 0) || 0) + 1);
+			// 【RGM新增】无我(#63): 不掉血判胜，能量条 += 预计伤害×3（原版 CE1 var[301]+=got_damage*3）
+			if (core.hasSpecial(special, 63)) {
+				var wuwoDmg = damageInfo.wuwoDmg || 0;
+				if (wuwoDmg > 0) core.setFlag('g_energy_used', (core.getFlag('g_energy_used', 0) || 0) + wuwoDmg * 3);
+				core.drawTip('无我效果，战斗胜利！');
+			}
 			// 【RGM新增】亡灵计数(#29): 每杀一只亡灵，最低伤害+1
 			if (core.hasSpecial(special, 29)) {
 				core.setFlag('undeadMinDamage', (core.getFlag('undeadMinDamage', 0) || 0) + 1);
@@ -371,6 +377,10 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 【RGM新增】黑暗(#55): 战后降低视野12步，每步扣1血
 			if (core.enemys.hasSpecial(special, 55)) {
 				core.setFlag('darkSteps', (core.getFlag('darkSteps', 0) || 0) + 12);
+			}
+			// 【RGM新增】灼烧(#42/#69/#70): 战后叠加20层灼烧，每步扣当前层数血并衰减5层
+			if (core.enemys.hasSpecial(special, 42) || core.enemys.hasSpecial(special, 69) || core.enemys.hasSpecial(special, 70)) {
+				core.setFlag('burnSteps', (core.getFlag('burnSteps', 0) || 0) + 20);
 			}
 			// 增加仇恨值
 			core.setFlag('hatred', core.getFlag('hatred', 0) + core.values.hatred);
@@ -548,8 +558,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			[41, "游荡", "角色靠近时怪物主动发起战斗", "#FF8C00"],
 			[42, "烈焰", "每回合附加灼烧状态", "#FF4500"],
 			[43, "虚弱", "战斗时使角色输出能力暂时降低", "#9370DB"],
-			[44, "镜像", "召唤镜像（造成20%无视护盾伤害且不被攻击）", "#00BFFF"],
-			[45, "自尽", "第10回合怪物自尽，不结算经验", "#696969"],
+			[44, "折射", "折射角色的攻击，造成20%的伤害（计算防御，伤害无视护盾）", "#00BFFF"],
+			[45, "自尽", "第10回合怪物自尽，不结算经验与金币", "#696969"],
 			[46, "怨恨", "附加死怪数×2无视护盾伤害，战后释放一半", "#4A0E4E"],
 			[47, "沉眠", "前3回合不攻击（相当于先攻-3）", "#4682B4"],
 			[48, "冰封", "第12回合冻结自身并形成不可通行冰墙", "#E0FFFF"],
@@ -838,6 +848,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}
 
 			// 如果没有破防，则不可战斗
+			// 【RGM新增】无我(#63): 无视破防，永远打得过（原版 var[10]=0）
+			if (core.hasSpecial(mon_special, 63)) hero_per_damage = Math.max(hero_per_damage, 1);
 			if (hero_per_damage <= 0) return null;
 
 			// 勇士的攻击回合数；为怪物生命除以每回合伤害向上取整
@@ -895,9 +907,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			if (core.hasSpecial(mon_special, 34)) {
 				damage += hero_mdef; // 把刚刚扣掉的护盾加回来
 			}
-			// 【RGM新增】镜像(#44): 20%无视护盾伤害
+			// 【RGM新增】折射(#44): (攻-防)/5 无视护盾伤害
 			if (core.hasSpecial(mon_special, 44)) {
-				damage += Math.floor(mon_atk * 0.2);
+				damage += Math.max(0, Math.floor((hero_atk - hero_def) / 5));
 			}
 			// 【RGM新增】怨恨(#46): 死怪数×2无视护盾
 			if (core.hasSpecial(mon_special, 46)) {
@@ -921,6 +933,21 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				damage = Math.max(damage, minDmg);
 			}
 
+			// 【RGM新增】无我(#63): 不造成实际伤害，但能量条按预计伤害×3增长
+			if (core.hasSpecial(mon_special, 63)) {
+				return {
+					"mon_hp": Math.floor(mon_hp),
+					"mon_atk": Math.floor(mon_atk),
+					"mon_def": Math.floor(mon_def),
+					"init_damage": Math.floor(init_damage),
+					"per_damage": Math.floor(per_damage),
+					"hero_per_damage": Math.floor(hero_per_damage),
+					"turn": Math.floor(turn),
+					"damage": 0,
+					"suicided": suicided,
+					"wuwoDmg": Math.floor(damage)
+				};
+			}
 			return {
 				"mon_hp": Math.floor(mon_hp),
 				"mon_atk": Math.floor(mon_atk),
@@ -1673,6 +1700,30 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					if (damage >= core.status.hero.hp) return false;
 					core.status.hero.statistics.poisonDamage += damage;
 					core.status.hero.hp -= damage;
+				}
+				// 黑暗(#55)：瞬移按跳过步数结算，每步扣1血（与中毒同理，防瞬移逃课）
+				var ds = core.getFlag('darkSteps', 0) || 0;
+				if (ds > 0 && ignoreSteps > 0) {
+					var cost = Math.min(ds, ignoreSteps);
+					if (cost >= core.status.hero.hp) return false;
+					core.setFlag('darkSteps', ds - cost);
+					core.status.hero.hp -= cost;
+					core.updateStatusBar(false, true);
+					core.darkPop = { x: x, y: y, t: 40 };
+				}
+				// 灼烧：瞬移按跳过步数结算（每步扣当前层数血，层数每步-5）
+				var bs = core.getFlag('burnSteps', 0) || 0;
+				if (bs > 0 && ignoreSteps > 0) {
+					var totalBurn = 0, cur = bs;
+					for (var bi = 0; bi < ignoreSteps && cur > 0; bi++) {
+						totalBurn += cur;
+						cur = Math.max(0, cur - 5);
+					}
+					if (totalBurn >= core.status.hero.hp) return false;
+					core.setFlag('burnSteps', cur);
+					core.status.hero.hp -= totalBurn;
+					core.updateStatusBar(false, true);
+					core.burnPop = { x: x, y: y, t: 40, dmg: totalBurn };
 				}
 
 				core.clearMap('hero');

@@ -1244,7 +1244,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	// 【东方星冥线】全屏裸屏: 迷你悬浮HUD(HP/魔塔能量) + 右下圆钮(道具/存档/设置)
 	(function () {
 		var SYS = 'rgba(192,224,255,0.85)', WHITE = 'rgb(255,255,255)';
-		var hudCv = null, hudCtx = null, btnCv = null, btnCtx = null, lastHp = null, scClickCv = null;
+		var hudCv = null, hudCtx = null, btnCv = null, btnCtx = null, lastHp = null, scClickCv = null, darkMask = null;
 		var BR = 15;
 		var BTNS = []; // 按钮已移到底部工具栏
 		function pill(c, x, y, w, h, text, fillColor, ratio) {
@@ -1286,6 +1286,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			requestAnimationFrame(tick);
 			var gd = core.dom && core.dom.gameDraw;
 			if (!gd) return;
+			// 【星冥线】黑暗特性：全屏黑罩（渐入渐出）
+			if (!darkMask) {
+				darkMask = document.createElement('div');
+				darkMask.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:130;pointer-events:none;opacity:0;transition:opacity 0.5s;display:none;';
+				gd.appendChild(darkMask);
+			}
+			var darkNow = core.getFlag('darkSteps', 0) || 0;
+			var darkOp = parseFloat(darkMask.style.opacity) || 0;
+			if ((darkNow > 0 ? 1 : 0) !== darkOp) darkMask.style.opacity = darkNow > 0 ? 1 : 0;
+			darkMask.style.display = (darkNow > 0 || darkOp > 0.01) ? 'block' : 'none';
 			if (!hudCv) {
 				hudCv = document.createElement('canvas');
 				hudCv.id = 'miniHud';
@@ -1308,6 +1318,36 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			if (hudCv.width !== PX) { hudCv.width = PX; hudCv.height = PY; }
 			var c = hudCtx;
 			c.clearRect(0, 0, PX, PY);
+			// 【星冥线】黑暗特性：HP-1 飘字
+			if (core.darkPop) {
+				var dp = core.darkPop;
+				dp.t--;
+				var dpx = dp.x * 32 - ((core.bigmap && core.bigmap.offsetX) || 0) + 16;
+				var dpy = dp.y * 32 - ((core.bigmap && core.bigmap.offsetY) || 0) - (40 - dp.t) * 0.6;
+				c.font = 'bold 16px Verdana';
+				c.textAlign = 'center';
+				c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.7)';
+				c.strokeText('HP-1', dpx, dpy);
+				c.fillStyle = '#FF4444';
+				c.fillText('HP-1', dpx, dpy);
+				c.textAlign = 'left';
+				if (dp.t <= 0) core.darkPop = null;
+			}
+			// 【星冥线】灼烧特性：HP-X 飘字（橙色）
+			if (core.burnPop) {
+				var bp = core.burnPop;
+				bp.t--;
+				var bpx = bp.x * 32 - ((core.bigmap && core.bigmap.offsetX) || 0) + 16;
+				var bpy = bp.y * 32 - ((core.bigmap && core.bigmap.offsetY) || 0) - (40 - bp.t) * 0.6;
+				c.font = 'bold 16px Verdana';
+				c.textAlign = 'center';
+				c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.7)';
+				c.strokeText('HP-' + bp.dmg, bpx, bpy);
+				c.fillStyle = '#FF6600';
+				c.fillText('HP-' + bp.dmg, bpx, bpy);
+				c.textAlign = 'left';
+				if (bp.t <= 0) core.burnPop = null;
+			}
 			// HP已由左侧状态栏显示，迷你HUD只保留能量条
 			var topY = fid === 'f0_garden' ? 38 : 6;
 			// 【星冥线】楼层副标题 + 能量条 → 右下角
@@ -5355,6 +5395,8 @@ function bfs(sx, sy, floorId) {
 function doAutoClean(inActions) {
     // 防止递归：BFS 内的 battle 触发 afterBattle 再调 autoClean
     if (core.hasFlag('__autoCleaning')) return;
+    if ((core.getFlag('darkSteps', 0) || 0) > 0) return; // 黑暗期间禁用自动清理
+    if ((core.getFlag('burnSteps', 0) || 0) > 0) return; // 灼烧期间禁用自动清理
     var autoPick = core.getFlag('autoPick', true);
     var autoClear = core.getFlag('autoClear', true);
     if (!autoPick && !autoClear) return;
@@ -5453,6 +5495,37 @@ function _installHooks() {
             var hadOnZone = core.hasFlag('onZone');
             var res;
             if (_origMoveOneStep) res = _origMoveOneStep.call(this, callback);
+
+            // 【星冥线】黑暗(#55)：每走一步扣1血，归零战败
+            var darkSteps = core.getFlag('darkSteps', 0) || 0;
+            if (darkSteps > 0 && core.status.hero) {
+                core.setFlag('darkSteps', darkSteps - 1);
+                core.status.hero.hp -= 1;
+                core.updateStatusBar();
+                core.drawHeroAnimate('zone');
+                core.darkPop = { x: core.status.hero.loc.x, y: core.status.hero.loc.y, t: 40 };
+                if (core.status.hero.hp <= 0) {
+                    core.status.hero.hp = 0;
+                    core.updateStatusBar(false, true);
+                    core.events.lose();
+                    return res;
+                }
+            }
+            // 【星冥线】灼烧(#42/#69/#70)：每走一步扣当前层数血，层数-5
+            var burnSteps = core.getFlag('burnSteps', 0) || 0;
+            if (burnSteps > 0 && core.status.hero) {
+                core.status.hero.hp -= burnSteps;
+                core.setFlag('burnSteps', Math.max(0, burnSteps - 5));
+                core.updateStatusBar();
+                core.drawHeroAnimate('zone');
+                core.burnPop = { x: core.status.hero.loc.x, y: core.status.hero.loc.y, t: 40, dmg: burnSteps };
+                if (core.status.hero.hp <= 0) {
+                    core.status.hero.hp = 0;
+                    core.updateStatusBar(false, true);
+                    core.events.lose();
+                    return res;
+                }
+            }
 
             if (hadOnZone) {
                 // 从有地图伤害的点走出 → 清理
