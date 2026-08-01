@@ -250,9 +250,9 @@ var maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
 
 	"406": {"cls":"enemys","id":"e1","name":"小小玉","faceIds":{"down":"e1"}},
 
-	"407": {"cls":"enemys","id":"e49","name":"幽幽蝠","faceIds":{"down":"e49"},"filter":{"hue":150}},
+	"407": {"cls":"enemys","id":"e49","name":"幽幽蝠","faceIds":{"down":"e49"}},
 
-	"408": {"cls":"enemys","id":"e322","name":"冥界守卫","faceIds":{"left":"e322"},"filter":{"hue":210}},
+	"408": {"cls":"enemys","id":"e322","name":"冥界守卫","faceIds":{"left":"e322"}},
 
 	"409": {"cls":"enemys","id":"e304","name":"土魔偶","faceIds":{"down":"e304"}},
 
@@ -268,17 +268,17 @@ var maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
 
 	"415": {"cls":"enemys","id":"e146","name":"白菫影","faceIds":{"down":"e146"}},
 
-	"416": {"cls":"enemys","id":"e197","name":"樱吹玉","faceIds":{"left":"e197"},"filter":{"hue":300}},
+	"416": {"cls":"enemys","id":"e197","name":"樱吹玉","faceIds":{"left":"e197"}},
 
 	"417": {"cls":"enemys","id":"e161","name":"古付丧鬼","faceIds":{"right":"e161"}},
 
-	"418": {"cls":"enemys","id":"e438","name":"返魂蝶","faceIds":{"right":"e438"},"filter":{"hue":100}},
+	"418": {"cls":"enemys","id":"e438","name":"返魂蝶","faceIds":{"right":"e438"}},
 
 	"419": {"cls":"enemys","id":"e222","name":"月光瀑","faceIds":{"down":"e222"}},
 
 	"420": {"cls":"enemys","id":"e66","name":"緋朱蔦","faceIds":{"right":"e66"}},
 
-	"421": {"cls":"enemys","id":"e46","name":"琥珀泪","faceIds":{"right":"e46"},"filter":{"hue":90}},
+	"421": {"cls":"enemys","id":"e46","name":"琥珀泪","faceIds":{"right":"e46"}},
 
 	"422": {"cls":"enemys","id":"e439","name":"土灵使","faceIds":{"right":"e439"}},
 
@@ -288,7 +288,7 @@ var maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
 
 	"425": {"cls":"enemys","id":"e85","name":"暗法师","faceIds":{"left":"e85"}},
 
-	"426": {"cls":"enemys","id":"e159","name":"怨灵华","faceIds":{"left":"e159"},"filter":{"hue":300}},
+	"426": {"cls":"enemys","id":"e159","name":"怨灵华","faceIds":{"left":"e159"}},
 
 	"427": {"cls":"enemys","id":"e163","name":"饿血华","faceIds":{"down":"e163"}},
 
@@ -302,9 +302,9 @@ var maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
 
 	"432": {"cls":"enemys","id":"e190","name":"霜夜射手","faceIds":{"up":"e190"}},
 
-	"433": {"cls":"enemys","id":"e443","name":"古战场茗","faceIds":{"down":"e443"},"filter":{"hue":150}},
+	"433": {"cls":"enemys","id":"e443","name":"古战场茗","faceIds":{"down":"e443"}},
 
-	"434": {"cls":"enemys","id":"e449","name":"冥府花","faceIds":{"left":"e449"},"filter":{"hue":50}},
+	"434": {"cls":"enemys","id":"e449","name":"冥府花","faceIds":{"left":"e449"}},
 
 	"350": {"cls":"animates","id":"arrDown","name":"下楼","canPass":true},
 	"351": {"cls":"animates","id":"arrLeft","name":"下楼","canPass":true},
