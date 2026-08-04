@@ -551,9 +551,22 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 
 			core.checkLevelUp = function() {
+				// 【星冥线】道具详情预览(_getItemDetail)期间禁止升级：itemEffect 在
+				// Proxy(只记diff不写target)下执行时若含 checkLevelUp，exp/lv 写入被
+				// 丢弃但 threshold 被抬高+弹窗被启动 → 假升级（2026-08-04 实测：
+				// f3_0 战斗后红经验书预览导致 lv 永久差一级，回放状态漂移）。
+				if (core.hasFlag('__statistics__')) return;
 				var threshold = core.getFlag('expThreshold', 0);
 				if (!threshold) { threshold = 20; core.setFlag('expThreshold', 20); }
 				if (!core.status.hero || core.status.hero.exp < threshold) return;
+				// 【星冥线】回放防伪升级：录像中没有对应加点(choices)的升级弹窗
+				// （回放中战斗/经验漂移导致多出升级，如 2026-08-04 存档 f3_8 场景），
+				// 直接跳过不升级：不扣 exp、不加 lv/hp，属性与录制保持一致；
+				// exp 保留后，录像真正的升级点（choices 在队首）仍会正常触发。
+				if (core.isReplaying() && core.status.replay && core.status.replay.toReplay) {
+					var _n0 = core.status.replay.toReplay[0];
+					if (typeof _n0 != 'string' || _n0.indexOf('choices:') != 0) return;
+				}
 				var hero = core.status.hero;
 				hero.exp -= threshold;
 				hero.lv = (hero.lv || 1) + 1;
@@ -564,12 +577,25 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.playBattleAnim(4, {fps: 15});
 				core.screenFlash({delay: 340, hold: 260, fade: 200});
 				var lvMsg = "升级至" + hero.lv + "级，HP +" + hpGain + "! 请选择：";
-				core.insertAction([
+				// 【星冥线】升级加点弹窗：非回放时延迟 200ms 启动新事件流，避开
+				// 换层/BFS 自动拾取收尾的 data 清理窗口（收尾同步执行，200ms
+				// 足够；实测收尾在 startEvents 的 30ms 等待窗口内清掉 choices →
+				// 弹窗永远不出现，2026-08-03 用户实测）。回放保持立即启动
+				// （回放路径已验证不受收尾清理影响）。
+				var __lvChoices = [
 					{type: "choices", text: lvMsg, choices: [
 						{text: "增加1点攻击", action: [{type: "function", function: "function(){core.addStatus('atk',1);core.checkLevelUp();}"}]},
 						{text: "增加1点防御", action: [{type: "function", function: "function(){core.addStatus('def',1);core.checkLevelUp();}"}]}
 					]}
-				]);
+				];
+				if (core.isReplaying()) {
+					core.events.startEvents(__lvChoices);
+				} else {
+					setTimeout(function () {
+						if (!core.status.hero || core.status.gameOver) return;
+						core.events.startEvents(__lvChoices);
+					}, 200);
+				}
 			};
 
 			var __nextLv = core.getNextLvUpNeed;
@@ -577,28 +603,34 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 			var __afterBattle = core.events.afterBattle;
 			core.events.afterBattle = function(enemy, x, y, callback) {
-				if (core.getFlag('crystal_red',0)) { core.removeFlag('crystal_red'); core.addStatus('atk', -1); }
-				if (core.getFlag('crystal_blue',0)) { core.removeFlag('crystal_blue'); core.addStatus('def', -1); }
+				// 【修复】战后收尾必须在原始 afterBattle（内含 getDamageInfo 伤害计算，读取
+				// shiyi_enemy_id 使役加成 + 水晶临时加成）之后执行；否则本场战斗的伤害结算
+				// 会用到新使役的加成/丢失水晶加成（原使役增益失效）。
+				var shiyiCaptureId = 0;
 				if (core.getFlag('shiyi_mode', 0) && enemy) {
 					var eid = enemy.id || enemy;
 					var numId = typeof eid == 'string' ? parseInt(eid.replace(/[^0-9]/g, '')) : eid;
-					if (numId > 0) core.captureShiyi(numId);
+					if (numId > 0) shiyiCaptureId = numId;
 				}
 				if (__afterBattle) __afterBattle.call(this, enemy, x, y, callback);
-						core.checkLevelUp();
-						core.ui.drawStatusBar();
-					};
+				// --- 以下均为战斗伤害结算完成后的收尾 ---
+				if (core.getFlag('crystal_red',0)) { core.removeFlag('crystal_red'); core.addStatus('atk', -1); }
+				if (core.getFlag('crystal_blue',0)) { core.removeFlag('crystal_blue'); core.addStatus('def', -1); }
+				if (shiyiCaptureId > 0 && core.status.hero.hp > 0) core.captureShiyi(shiyiCaptureId);
+				core.checkLevelUp();
+				core.ui.drawStatusBar();
+			};
 
 		}
 			// 【东方星冥线】符卡系统 — 妖梦3张符卡
 			core.setFlag('sc_1_avail', true); core.setFlag('sc_2_avail', true); core.setFlag('sc_3_avail', true);
 			core.setFlag('sc_meizhan_active', false); core.setFlag('sc_meizhan_turns', 0);
 			core._SC_FULL = ['瞑斩「楼观赋予我能斩断弹幕的心之眼」','断迷剑「迷津慈航斩」','魂符「二重的苦轮」'];
-			// 瞑斩回合递减
+			// 瞑斩回合递减（放在原始 afterBattle 之后，确保最后一场的 atk+1 吃到加成）
 			var __sc_ab = core.events.afterBattle;
 			core.events.afterBattle = function(enemy, x, y, callback) {
-				if (core.getFlag('sc_meizhan_active', false)) { var tr = core.getFlag('sc_meizhan_turns',0)-1; if (tr<=0) { core.setFlag('sc_meizhan_active',false); core.setFlag('sc_meizhan_turns',0); core.drawTip('瞑斩效果结束'); } else { core.setFlag('sc_meizhan_turns',tr); } }
 				if (__sc_ab) __sc_ab.call(this, enemy, x, y, callback);
+				if (core.getFlag('sc_meizhan_active', false)) { var tr = core.getFlag('sc_meizhan_turns',0)-1; if (tr<=0) { core.setFlag('sc_meizhan_active',false); core.setFlag('sc_meizhan_turns',0); core.drawTip('瞑斩效果结束'); } else { core.setFlag('sc_meizhan_turns',tr); } }
 				core.ui.drawStatusBar();
 			};
 			// 符卡总入口
@@ -844,7 +876,72 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.fillText('ui', '攻+' + ab, col1, pos, '#FFCC88', f12);
 				core.fillText('ui', '防+' + db, col2, pos, '#88CCFF', f12);
 				core.fillText('ui', '盾+' + mb, col3, pos, '#CC88FF', f12);
+			// 【星冥线】怪物手册推荐使役（复刻 RGM 088 calculate_best_baby：优秀宝宝名字亮紫标记）
+			var __bookDraw = core.ui.drawBook;
+			core.ui.drawBook = function(index) {
+				if (!core.status.hero) return __bookDraw.call(this, index);
+				var floorId = core.floorIds[(core.status.event.ui || {}).index] || core.status.floorId;
+				var babyId = core.getFlag('shiyi_enemy_id', 0);
+				var hp = core.status.hero.hp;
+				var atk = core.getRealStatus('atk'), def = core.getRealStatus('def');
+				var key = floorId + '|' + hp + '|' + atk + '|' + def + '|' + babyId;
+				if (core._bestBabiesKey !== key) {
+					core._bestBabiesKey = key;
+					core._bestBabies = core._calcBestBabies(floorId, babyId, hp, atk, def);
+				}
+				return __bookDraw.call(this, index);
 			};
+			core._calcBestBabies = function(floorId, babyId, playerHp, playerAtk, playerDef) {
+				var res = {};
+				if (!core.status.hero || !ENEMY_RMXP_STATS) return res;
+				var curSum = 0, curShield = 0;
+				if (babyId > 0 && ENEMY_RMXP_STATS[babyId]) {
+					curSum = Math.max(ENEMY_RMXP_STATS[babyId].str - 1, 0) + Math.max(ENEMY_RMXP_STATS[babyId].dex - 1, 0);
+					curShield = ENEMY_RMXP_STATS[babyId].maxsp;
+				}
+				var enemys = core.enemys.getCurrentEnemys(floorId);
+				var candidates = [];
+				for (var i = 0; i < enemys.length; i++) {
+					var e = enemys[i];
+					var dmg = e.damage;
+					if (dmg == null || dmg >= playerHp) continue;
+					var eid = e.id;
+					if (typeof eid == 'string') eid = parseInt(eid.replace(/[^0-9]/g, ''));
+					var s = ENEMY_RMXP_STATS[eid];
+					if (!s) continue;
+					var atkBuff = Math.max(s.str - 1, 0), defBuff = Math.max(s.dex - 1, 0);
+					var sumBuff = atkBuff + defBuff, shieldBuff = s.maxsp;
+					if (sumBuff > curSum || (sumBuff == curSum && shieldBuff > curShield))
+						candidates.push([sumBuff, shieldBuff, dmg, i, atkBuff, e.id]);
+				}
+				if (!candidates.length) return res;
+				candidates.sort(function(a, b) {
+					var r = playerAtk >= playerDef ? b[4] - a[4] : b[0] - a[0];
+					if (r == 0) r = b[1] - a[1];
+					if (r == 0) r = a[2] - b[2];
+					return r;
+				});
+				var topSum = candidates[0][0], topShield = candidates[0][1], topDmg = candidates[0][2];
+				for (var j = 0; j < candidates.length; j++) {
+					var c = candidates[j];
+					if (c[0] == topSum && c[1] == topShield && c[2] == topDmg) res[c[5]] = true;
+				}
+				return res;
+			};
+			var __bookName = core.ui._drawBook_drawName;
+			core.ui._drawBook_drawName = function(index, enemy, top, left, width) {
+				__bookName.call(this, index, enemy, top, left, width);
+				if (core._bestBabies && core._bestBabies[enemy.id]) {
+					core.setTextAlign('ui', 'center');
+					var f17 = this._buildFont(17, true);
+					if (enemy.specialText.length == 0)
+						core.fillText('ui', enemy.name, left + width / 2, top + 35, '#C373D7', f17, width);
+					else
+						core.fillText('ui', enemy.name, left + width / 2, top + 28, '#C373D7', f17, width);
+				}
+			};
+
+		};
 
 		// 【东方星冥线】禁用双击瞬移（保留行走中重新指定目标）
 		control.prototype._setAutomaticRoute_isMoving = function (destX, destY) {
@@ -1027,6 +1124,8 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 		function bgmTick() {
 			requestAnimationFrame(bgmTick);
 			if (!core.isPlaying() || !core.status.floorId) return;
+			// 【后台静音】页面隐藏或窗口失焦时不再重播BGM（main.js 的 blur/visibilitychange 负责暂停、focus 恢复）
+			if (document.hidden || !document.hasFocus()) return;
 			var b = BGM_OF(core.status.floorId);
 			if (!b) return;
 			var shouldPlay = core.musicStatus.playingBgm !== b[0] && lastBgmKey !== b[0] + core.status.floorId;
@@ -1311,8 +1410,12 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			// 魔塔能量统计 (沿用原HUD逻辑: 进塔设上限3000, 按掉血消耗)
 			var fid = core.status.floorId || '';
 			var inTower = fid.indexOf('f1_') === 0 || fid.indexOf('f3_') === 0;
-			if (inTower && !core.getFlag('g_energy_max', 0)) core.setFlag('g_energy_max', 3000);
-			if (lastHp != null && hero.hp < lastHp) core.setFlag('g_energy_used', core.getFlag('g_energy_used', 0) + (lastHp - hero.hp));
+			var bossFight = fid === 'f3_12' || !!core.getFlag('specialAttack');
+			if (inTower && !bossFight && !core.getFlag('g_energy_max', 0)) core.setFlag('g_energy_max', 3000);
+			if (!bossFight && lastHp != null && hero.hp < lastHp) core.setFlag('g_energy_used', core.getFlag('g_energy_used', 0) + (lastHp - hero.hp));
+			// f3_12 试炼层：隐藏楼层名
+			if (fid === 'f3_12') { var _fnl = core.dom.floorNameLabel; if (_fnl) _fnl.style.display = 'none'; }
+			else { var _fnl2 = core.dom.floorNameLabel; if (_fnl2 && _fnl2.style.display === 'none') _fnl2.style.display = 'block'; }
 			lastHp = hero.hp;
 			var PX = core._PX_ || 416, PY = core._PY_ || 416;
 			if (hudCv.width !== PX) { hudCv.width = PX; hudCv.height = PY; }
@@ -1352,11 +1455,16 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			var topY = fid === 'f0_garden' ? 38 : 6;
 			// 【星冥线】楼层副标题 + 能量条 → 右下角
 			var emax = core.getFlag('g_energy_max', 0);
-			if (inTower && emax > 0) {
+			if (inTower && emax > 0 && !bossFight) {
 				var remain = Math.max(0, emax - core.getFlag('g_energy_used', 0));
 				pill(c, PX - 124, PY - 30, 116, 16, remain + '/' + emax, 'rgb(150,140,255)', remain / emax);
+				// 能量归零 → 幽幽子试炼（传送到 f3_12 开BOSS战）
+				if (remain <= 0 && !core.getFlag('energyBossDone', false) && !core.status.lockControl && !core.status.event.id) {
+					core.setFlag('energyBossDone', true);
+					setTimeout(function () { if (core.plugin.startEnergyBoss) core.plugin.startEnergyBoss(); }, 400);
+				}
 			}
-			if (inTower) {
+			if (inTower && !bossFight) {
 				var sub = (core.status.thisMap || {}).subtitle || '';
 				if (sub) {
 					c.font = 'bold 12px "Microsoft YaHei", sans-serif';
@@ -3394,6 +3502,98 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 
 		window.Sprite = Sprite;
 	},
+	"reduceDamageDisplay": function () {
+		// ========== 显示减伤（+1攻/+1防收益，复刻RGM按住D键效果） ==========
+		// 显示设置 → 显示减伤：地图上每只怪物头顶显示"+1攻收益"与"+1防收益"。
+		// 与"临界显伤"互斥（打开一方自动关闭另一方，避免数字重叠）。
+		// 持久化：跟随引擎 _init_sys_flags 从 localStorage 读取（读档/新游戏后仍生效）。
+		var __initSysFlags = core._init_sys_flags;
+		core._init_sys_flags = function () {
+			__initSysFlags.apply(this, arguments);
+			core.flags.displayReduceDamage = core.getLocalStorage('reduceDamage', false);
+		};
+		// 显示设置菜单：临界显伤后插入"显示减伤"（临界显伤 → 临界显示 改名）
+		var __drawDisp = ui.prototype._drawSwitchs_display;
+		ui.prototype._drawSwitchs_display = function () {
+			core.status.event.id = 'switchs-display';
+			var choices = [
+				" <   放缩：" + Math.max(core.domStyle.scale, 1) + "x   > ",
+				"高清画面： " + (core.flags.enableHDCanvas ? "[ON]" : "[OFF]"),
+				"定点怪显： " + (core.flags.enableEnemyPoint ? "[ON]" : "[OFF]"),
+				"怪物显伤： " + (core.flags.displayEnemyDamage ? "[ON]" : "[OFF]"),
+				"临界显示： " + (core.flags.displayCritical ? "[ON]" : "[OFF]"),
+				"显示减伤： " + (core.flags.displayReduceDamage ? "[ON]" : "[OFF]"),
+				"领域显伤： " + (core.flags.displayExtraDamage ? "[ON]" : "[OFF]"),
+				"领域模式： " + (core.flags.extraDamageType == 2 ? "[最简]" : core.flags.extraDamageType == 1 ? "[半透明]" : "[完整]"),
+				"道具详情： " + (core.getFlag('itemDetail') !== false ? "[ON]" : "[OFF]"),
+				"自动放缩： " + (core.getLocalStorage('autoScale') ? "[ON]" : "[OFF]"),
+				"返回上一级"
+			];
+			this.drawChoices(null, choices);
+		};
+		// 点击处理：sel 5 = 显示减伤（开启时自动关闭临界显伤）；其余索引下移1交给内层链
+		var __clickDisp = actions.prototype._clickSwitchs_display;
+		actions.prototype._clickSwitchs_display = function (x, y) {
+			var choices = core.status.event.ui.choices;
+			var top = this._getChoicesTopIndex(choices.length);
+			var sel = y - top;
+			if (sel === 5) {
+				if (this._out(x)) return;
+				core.status.event.selection = 5;
+				core.playSound('确定');
+				core.flags.displayReduceDamage = !core.flags.displayReduceDamage;
+				if (core.flags.displayReduceDamage && core.flags.displayCritical) {
+					core.flags.displayCritical = false;
+					core.setLocalStorage('critical', false);
+				}
+				core.setLocalStorage('reduceDamage', core.flags.displayReduceDamage);
+				core.updateDamage();
+				ui.prototype._drawSwitchs_display.call(core.ui);
+				return;
+			}
+			if (sel > 5) y -= 1;
+			__clickDisp.call(this, x, y);
+		};
+		// 反向互斥：打开临界显伤时自动关闭显示减伤
+		var __clickCritical = actions.prototype._clickSwitchs_display_critical;
+		actions.prototype._clickSwitchs_display_critical = function () {
+			if (!core.flags.displayCritical) {
+				core.flags.displayReduceDamage = false;
+				core.setLocalStorage('reduceDamage', false);
+			}
+			__clickCritical.apply(this, arguments);
+		};
+		// 地图渲染：怪物头顶 +1攻收益（粉/灰 y-21）与 +1防收益（青/灰 y-11），伤害数字在 y-1
+		var __origDmg = control.prototype._updateDamage_damage;
+		control.prototype._updateDamage_damage = function (floorId, onMap) {
+			__origDmg.apply(this, arguments);
+			if (!core.flags.displayReduceDamage) return;
+			core.extractBlocks(floorId);
+			var heroAtk = core.status.hero.atk;
+			core.status.maps[floorId].blocks.forEach(function (block) {
+				var x = block.x, y = block.y;
+				if (onMap && core.bigmap.v2) {
+					if (x < core.bigmap.posX - core.bigmap.extend || x > core.bigmap.posX + core._WIDTH_ + core.bigmap.extend
+						|| y < core.bigmap.posY - core.bigmap.extend || y > core.bigmap.posY + core._HEIGHT_ + core.bigmap.extend) return;
+				}
+				if (block.disable || block.event.cls.indexOf('enemy') != 0 || block.event.displayDamage === false) return;
+				var enemy = block.event.id;
+				var now = core.enemys._getDamage(enemy, null, x, y, floorId);
+				if (now == null) return;
+				var atk1 = core.enemys._getDamage(enemy, { "atk": heroAtk + 1 }, x, y, floorId);
+				var def1 = core.enemys.getDefDamage(enemy, 1, x, y, floorId);
+				var aB = (atk1 == null) ? -1 : (now - atk1);
+				var dB = (typeof def1 == 'number') ? def1 : -1;
+				if (aB <= 0 && dB <= 0) return;
+				var aC = '#C0C0C0', dC = '#C0C0C0';
+				if (aB >= dB) aC = '#FF809B';
+				else dC = '#80E4FF';
+				if (aB > 0) core.status.damage.data.push({ text: core.formatBigNumber(aB, true), px: 32 * x + 1, py: 32 * (y + 1) - 21, color: aC });
+				if (dB > 0) core.status.damage.data.push({ text: core.formatBigNumber(dB, true), px: 32 * x + 1, py: 32 * (y + 1) - 11, color: dC });
+			});
+		};
+		// ========== 显示减伤 END ==========
+	},
 	"hotReload": function () {
 		/* ---------- 功能说明 ---------- *
 
@@ -5120,7 +5320,7 @@ function _getAnimate() {
     return core.plugin.animate;
 }
 
-var transitionTime = 120; // 磁吸动画时长（毫秒）
+// 磁吸动画不再用固定时长（改为逐帧追踪英雄，见 animationItem）
 var transitionList = []; // 动画列表（用数组便于清理）
 
 // 动画 Canvas 清理 ticker
@@ -5266,53 +5466,69 @@ function canReturn(startX, startY) {
     return false;
 }
 
-// 磁吸动画：道具飞到英雄位置
+// 磁吸动画：道具飞向英雄
+// 正常游玩（非录像）：固定 180ms easeOut 缓动，磁吸感明显；
+// 录像高倍速：逐帧追踪英雄当前位置（终点实时更新），速度随倍速缩放，保证永远追得上。
+// 旧版固定 120ms 缓动（不分模式）：录像高倍速下英雄瞬移跑出动画范围后，销毁条件
+// （道具≈英雄）永不满足，道具图标钉在旧位置每帧重画 → 「角色到处跑、后面跟一堆宝物」的拖尾。
 function animationItem(id, sx, sy) {
     _getAnimate();
     _ensureAnimTicker();
 
-    var px = sx * 32 - (core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0);
-    var py = sy * 32 - (core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0);
+    var ox = core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0;
+    var oy = core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0;
+
+    var spd = (core.status.replay && core.status.replay.speed) || 1;
+    if (spd < 1) spd = 1;
 
     var t = new Transition();
-    t.mode(hyper('sin', 'out'))
-        .time(transitionTime)
-        .absolute()
-        .transition('x', px)
-        .transition('y', py);
+    t.value = { x: sx * 32 - ox, y: sy * 32 - oy };
+    t._acLast = null;
 
-    var hx = core.status.hero.loc.x;
-    var hy = core.status.hero.loc.y;
-    t.value.x = hx * 32 - (core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0);
-    t.value.y = hy * 32 - (core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0);
-    t._acEndLoc = { x: hx, y: hy };
+    if (spd <= 1) {
+        // 【正常游玩】固定 180ms easeOut 缓动：先快后慢，磁吸感明显
+        var ex0 = core.status.hero.loc.x * 32 - ox;
+        var ey0 = core.status.hero.loc.y * 32 - oy;
+        t._acStartX = t.value.x;
+        t._acStartY = t.value.y;
+        t._acDuration = 180;
+        t._acStart = -1;
 
-    // 动画中英雄移动时更新终点
-    t.listen('running', function (ani) {
-        var ex = core.status.hero.loc.x;
-        var ey = core.status.hero.loc.y;
-        if (ex !== ani._acEndLoc.x || ey !== ani._acEndLoc.y) {
-            ani.value.x = ex * 32 - (core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0);
-            ani.value.y = ey * 32 - (core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0);
-            ani._acEndLoc = { x: ex, y: ey };
-        }
-    });
+        t.ticker.add(function () {
+            if (!core.isPlaying()) return;
+            // 用 Date.now() 现实时间而非 ticker elapsed：回放中事件排队/阻塞时
+            // elapsed 不推进会导致 p 永远 <1 → 动画卡住不结束（实测残留数百帧）
+            if (t._acStart < 0) t._acStart = Date.now();
+            var p = (Date.now() - t._acStart) / t._acDuration;
+            if (p >= 1) {
+                // 完成：吸附到英雄位置并结束
+                t.value.x = ex0;
+                t.value.y = ey0;
+                core.drawIcon('_autoItem_', id, t.value.x, t.value.y, 32, 32);
+                t.ticker.destroy();
+                var idx = transitionList.indexOf(t);
+                if (idx >= 0) transitionList.splice(idx, 1);
+                return;
+            }
+            // easeOutQuad 缓动
+            var e = 1 - (1 - p) * (1 - p);
+            t.value.x = t._acStartX + (ex0 - t._acStartX) * e;
+            t.value.y = t._acStartY + (ey0 - t._acStartY) * e;
+            core.drawIcon('_autoItem_', id, t.value.x, t.value.y, 32, 32);
+        });
+    } else {
+        // 【录像高倍速】直接瞬移吸附（1帧到位，零拖尾）：
+        // 录像中英雄持续瞬移，逐帧追踪动画必然追不上（实测 yellowKey 追 5 秒），
+        // 磁吸动画在录像高倍速下没有观赏意义，直接画在英雄位置。
+        var hx0 = core.status.hero.loc.x;
+        var hy0 = core.status.hero.loc.y;
+        t.value.x = hx0 * 32 - ox;
+        t.value.y = hy0 * 32 - oy;
+        core.drawIcon('_autoItem_', id, t.value.x, t.value.y, 32, 32);
+        return;
+    }
 
     transitionList.push(t);
-
-    t.ticker.add(function () {
-        core.drawIcon('_autoItem_', id, t.value.x, t.value.y, 32, 32);
-        var hx2 = core.status.hero.loc.x;
-        var hy2 = core.status.hero.loc.y;
-        var ox = core.bigmap && core.bigmap.offsetX ? core.bigmap.offsetX : 0;
-        var oy = core.bigmap && core.bigmap.offsetY ? core.bigmap.offsetY : 0;
-        if (Math.abs(t.value.x - hx2 * 32 + ox) < 0.05 &&
-            Math.abs(t.value.y - hy2 * 32 + oy) < 0.05) {
-            t.ticker.destroy();
-            var idx = transitionList.indexOf(t);
-            if (idx >= 0) transitionList.splice(idx, 1);
-        }
-    });
 }
 
 // BFS 广搜可清理的图块
@@ -5439,14 +5655,60 @@ function doAutoClean(inActions) {
 // ==================== 钩子安装 ====================
 
 function _installHooks() {
+    // --- 【星冥线】孤儿 choices 快速失败 ---
+    // 升级加点(攻击/防御/生命)等 choices 动作若未被事件流消费而出现在回放主循环，
+    // 说明回放状态与录像录制时不一致（旧版本录像/数据已改动），
+    // 立即报错并提示原因，而不是静默跳过导致队列错位后在无关位置爆"录像文件出错"。
+    if (core.control && core.control.registerReplayAction) {
+        core.control.registerReplayAction("ignoreInput", function (action) {
+            if (action.indexOf('input:') == 0 || action.indexOf('input2:') == 0 || action.indexOf('random:') == 0) {
+                console.warn('警告！录像播放中出现了未知的 ' + action + '！');
+                core.replay();
+                return true;
+            }
+            if (action.indexOf('choices:') == 0) {
+                if (action == 'choices:none') {
+                    console.warn('警告！录像播放中出现了未知的 ' + action + '！');
+                    core.replay();
+                    return true;
+                }
+                console.error('录像与当前游戏数据不一致：choices 动作 ' + action +
+                    ' 未被事件消费（升级加点/剧情选项未触发）。请用当前版本重新录制录像。');
+                core.control._replay_error(action);
+                return true;
+            }
+            return false;
+        });
+    }
+
     // --- afterChangeFloor：切换楼层后清理 ---
     var _origAfterChangeFloor = core.events.afterChangeFloor;
     core.events.afterChangeFloor = function (floorId) {
         if (_origAfterChangeFloor) _origAfterChangeFloor.call(this, floorId);
         if (main.mode !== 'play') return;
+        // 标记刚换层：换层事件流收尾时跳过"提前 BFS"（录制时换层收尾的 BFS 因
+        // insertAction 静默丢弃未执行，回放中提前 BFS 若执行会多清 0 伤怪触发
+        // 升级 choices 弹窗而录像无对应操作 → 卡死）
+        core.setFlag('__justChangedFloor__', true);
         if (!core.hasFlag('__fromLoad__')) {
             core.updateCheckBlock(floorId);
             doAutoClean();
+        }
+        // ★ 双主角跟随：flag 驱动（幽幽子试炼通关回庭园喝茶对话后设置 g_yuyuko_follow）
+        if (core.getFlag('g_yuyuko_follow', 0)) {
+            var fs = core.status.hero.followers || [], has = false;
+            for (var i = 0; i < fs.length; i++) if (fs[i].name === 'char_yuyuko.png') { has = true; break; }
+            if (!has) core.events.follow('char_yuyuko.png');
+        }
+        // ★ 换层/读档后跟随者归位到主角身边
+        if (core.status.hero.followers && core.status.hero.followers.length) {
+            core.gatherFollowers();
+            core.clearMap('hero');
+            core.drawHero();
+        }
+        // ★ 幽幽子跟随后，庭园赏花位 NPC 隐藏（防刷新/换层复活）
+        if (core.getFlag('g_yuyuko_follow', 0) && floorId === 'f0_garden') {
+            core.setBlock(0, 28, 61);
         }
     };
 
@@ -5470,10 +5732,26 @@ function _installHooks() {
     };
 
     // --- 事件结束（NPC对话/剧情结束后）清理 ---
-    // _doAction_finishEvents 返回 true 表示事件流已结束（closePanel 已清空
-    // event.id，此处走 doAutoClean 的直接 BFS 路径，不会触发 insertAction 分支）
+    // 2026-08-01 【录像回放自动拾取修复】：
+    // 回放中事件流收尾时，原版 _doAction_finishEvents 会同步调用 core.replay() 继续回放，
+    // 导致事件结束后的自动拾取（doAutoClean BFS）永远晚于下一步操作执行（录制时真人
+    // closePanel 后 BFS 立即跑：f3_0 (3,3) 黄钥匙、f3_2 (11,10) 使役之杖、f3_4 (3,11)
+    // 经验书→升级加点 都依赖它）。因此事件流确认结束时**先**执行 doAutoClean(true)
+    // 再恢复回放；配合 libs/events.js insertAction 修复（list 空时转新事件流），
+    // 升级加点的 choices 能正常入队并被回放消费。
     var _origFinishEvents = core.events._doAction_finishEvents;
     core.events._doAction_finishEvents = function () {
+        // 换层事件流收尾：跳过提前 BFS（录制时该 BFS 未执行，见 afterChangeFloor 注释）
+        var _justChanged = core.hasFlag('__justChangedFloor__');
+        if (_justChanged) core.removeFlag('__justChangedFloor__');
+        try {
+            var _evd = core.status.event && core.status.event.data;
+            if (!_justChanged && core.status.event && core.status.event.id == 'action' && _evd && _evd.list &&
+                _evd.list.length == 0 && (!_evd.appendingEvents || _evd.appendingEvents.length == 0) &&
+                main.mode === 'play') {
+                doAutoClean(true);
+            }
+        } catch (e) { }
         var done = _origFinishEvents ? _origFinishEvents.call(this) : true;
         if (done && main.mode === 'play') doAutoClean();
         return done;
@@ -5524,6 +5802,44 @@ function _installHooks() {
                     core.updateStatusBar(false, true);
                     core.events.lose();
                     return res;
+                }
+            }
+
+            // 【星冥线】远程(#50)：直线4格内远程怪每步扣血（原版 023 脚本），3格内怪后退
+            var heroLocR = core.status.hero.loc;
+            var remDirs = [[0,-1],[0,1],[-1,0],[1,0]];
+            for (var ri = 0; ri < 4; ri++) {
+                for (var rd = 1; rd <= 4; rd++) {
+                    var rtx = heroLocR.x + remDirs[ri][0] * rd;
+                    var rty = heroLocR.y + remDirs[ri][1] * rd;
+                    var rblk = core.getBlock(rtx, rty);
+                    if (!rblk || !rblk.event || !rblk.event.id) continue;
+                    var ren = core.material.enemys[rblk.event.id];
+                    if (ren && core.hasSpecial(ren.special, 50)) {
+                        var rharm = ren.atk - core.getRealStatus('def');
+                        if (core.hasSpecial(ren.special, 2)) rharm = ren.atk; // 魔攻怪按攻击力
+                        if (rharm > 0 && core.status.hero.hp > 0) {
+                            core.status.hero.hp -= rharm;
+                            core.updateStatusBar();
+                            core.burnPop = { x: rtx, y: rty, t: 40, dmg: rharm };
+                            if (core.status.hero.hp <= 0) {
+                                core.status.hero.hp = 0;
+                                core.updateStatusBar(false, true);
+                                core.events.lose();
+                                return res;
+                            }
+                        }
+                        // 3格内：怪后退一格（引擎 moveBlock 动画，同阻击机制；目标格可通行才退）
+                        if (rd <= 3) {
+                            var bxx = rtx + remDirs[ri][0], byy = rty + remDirs[ri][1];
+                            var bblk = core.getBlock(bxx, byy);
+                            var canBack = !bblk || (bblk.number === 0 && !bblk.event.noPass);
+                            if (canBack) {
+                                var backDir = ri === 0 ? 'up' : ri === 1 ? 'down' : ri === 2 ? 'left' : 'right';
+                                core.moveBlock(rtx, rty, [backDir + ':1'], 250, true);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -5659,3 +5975,363 @@ if (core.plugin.autoClean) {
 }; // end _autoCleanPluginFn
 
 _autoCleanPluginFn();
+
+// ===== 【东方星冥线】仿东方BOSS战机制（修复版，适配21×15视口）=====
+// 测试入口：游戏中按 T 键（清空 9×9 区域后开始 BOSS 战）
+var _bossBattlePluginFn = function () {
+    if (typeof core === 'undefined') {
+        plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1["bossBattle"] = _bossBattlePluginFn;
+        return;
+    }
+    var _self = this;
+
+    // ---------------- 招式（符卡）配置 ----------------
+    // type: "battle"=撞BOSS本体后换阶段；"time"=撑过 maxTime 步后换阶段
+    this.attack = {
+        // ===== 测试用：小小玉 =====
+        "f1_1": {
+            "name": "符卡一·本体战",
+            "type": "battle",
+            "action": function () {},
+            "beforeAttack": [],
+            "afterAttack": [
+                { "type": "setBlock", "number": "e1", "loc": [7, 7] },
+                { "type": "jumpHero", "loc": [7, 11], "time": 500, "async": true },
+                { "type": "jump", "from": [7, 7], "to": [7, 4], "time": 500, "keep": true, "async": true },
+                { "type": "waitAsync" },
+                { "type": "setBlock", "number": "greenPotion", "loc": [6, 11], "time": 200, "async": true },
+                { "type": "setBlock", "number": "greenPotion", "loc": [8, 11], "time": 200, "async": true },
+                { "type": "waitAsync" }
+            ]
+        },
+        "f1_2": {
+            "name": "符卡二·红玉乱舞",
+            "type": "battle",
+            "action": function () {},
+            "beforeAttack": [{
+                "type": "setBlock",
+                "number": "e2",
+                "loc": [[6, 3], [8, 3], [6, 5], [8, 5]],
+                "time": 200,
+                "async": true
+            }, { "type": "waitAsync" }],
+            "afterAttack": []
+        },
+        "f1_3": {
+            "name": "符卡三·时符(撑5步)",
+            "type": "time",
+            "maxTime": 5,
+            "action": function () {
+                var sp = core.getFlag('specialAttack');
+                if (sp && sp.turn <= 4) {
+                    core.setBlock('e2', 3 + sp.turn, 3 + sp.turn);
+                }
+            },
+            "beforeAttack": [],
+            "afterAttack": []
+        },
+        "f1_4": {
+            "name": "符卡四·终结",
+            "type": "battle",
+            "action": function () {},
+            "beforeAttack": [
+                { "type": "setBlock", "number": "e1", "loc": [7, 7] }
+            ],
+            "afterAttack": []
+        },
+        // ===== 正式：幽幽子（能量归零试炼）=====
+        "y1": {
+            "name": "符卡一·死蝶",
+            "type": "battle",
+            "action": function () {},
+            "beforeAttack": [],
+            "afterAttack": [
+                { "type": "setBlock", "number": "e403b", "loc": [7, 7] },
+                { "type": "jumpHero", "loc": [7, 11], "time": 500, "async": true },
+                { "type": "jump", "from": [7, 7], "to": [7, 4], "time": 500, "keep": true, "async": true },
+                { "type": "waitAsync" },
+                { "type": "setBlock", "number": "greenPotion", "loc": [6, 11], "time": 200, "async": true },
+                { "type": "setBlock", "number": "greenPotion", "loc": [8, 11], "time": 200, "async": true },
+                { "type": "waitAsync" }
+            ]
+        },
+        "y2": {
+            "name": "符卡二·蝶舞",
+            "type": "battle",
+            "action": function () {},
+            "beforeAttack": [{
+                "type": "setBlock",
+                "number": "e2",
+                "loc": [[6, 3], [8, 3], [6, 5], [8, 5]],
+                "time": 200,
+                "async": true
+            }, { "type": "waitAsync" }],
+            "afterAttack": []
+        },
+        "y3": {
+            "name": "符卡三·时符(撑5步)",
+            "type": "time",
+            "maxTime": 5,
+            "action": function () {
+                var sp = core.getFlag('specialAttack');
+                if (sp && sp.turn <= 4) {
+                    core.setBlock('e2', 3 + sp.turn, 3 + sp.turn);
+                }
+            },
+            "beforeAttack": [],
+            "afterAttack": []
+        },
+        "y4": {
+            "name": "符卡四·反魂蝶",
+            "type": "battle",
+            "action": function () {},
+            "beforeAttack": [
+                { "type": "setBlock", "number": "e403b", "loc": [7, 7] }
+            ],
+            "afterAttack": []
+        }
+    };
+
+    // ---------------- BOSS 配置 ----------------
+    this.boss = {
+        "testBoss": {
+            "enemyId": "e1",
+            "name": "小小玉·试炼",
+            "attack": ["f1_1", "f1_2", "f1_3", "f1_4"],
+            "beforeBattle": [
+                { "type": "setBlock", "number": "e1", "loc": [7, 7] },
+                { "type": "setGlobalFlag", "name": "enableMoveDirectly", "value": false },
+                { "type": "pauseBgm" },
+                { "type": "playBgm", "name": "bgm.mp3", "keep": true }
+            ],
+            "afterBattle": [
+                { "type": "setGlobalFlag", "name": "enableMoveDirectly", "value": true },
+                { "type": "pauseBgm" }
+            ]
+        },
+        "yuyuko": {
+            "enemyId": "e403b",
+            "name": "幽幽子",
+            "attack": ["y1", "y2", "y3", "y4"],
+            "beforeBattle": [
+                { "type": "setBlock", "number": "e403b", "loc": [7, 7] },
+                { "type": "setGlobalFlag", "name": "enableMoveDirectly", "value": false },
+                { "type": "pauseBgm" },
+                { "type": "playBgm", "name": "bgm_youyoumu.mp3", "keep": true }
+            ],
+            "afterBattle": [
+                { "type": "setGlobalFlag", "name": "enableMoveDirectly", "value": true },
+                { "type": "pauseBgm" },
+                { "type": "function", "function": "function(){ core.setFlag('g_energy_used', 0); core.setFlag('energyBossDone', true); }" },
+                { "type": "changeFloor", "floorId": "f0_garden", "loc": [23, 61], "direction": "right", "time": 0 },
+                "\\t[幽幽子,face_yuyuko_00.png]哎呀，辛苦了。来，坐下喝杯茶吧。",
+                "\\t[妖梦,face_youmu_00.png]……幽幽子大人，我们不是在测试吗？",
+                "\\t[幽幽子,face_yuyuko_00.png]可是测试已经结束了呀。你已经通关了我的符卡了。",
+                "\\t[妖梦,face_youmu_00.png]只……只要把终符中的您击败，就算是通过了吗？",
+                "\\t[幽幽子,face_yuyuko_00.png]当然啦，我是刚才那座魔塔的主人嘛。",
+                "\\t[幽幽子,face_yuyuko_00.png]所以，你通过了。",
+                "\\t[妖梦,face_youmu_00.png]那……幽幽子大人，您在测试中想传达给我的，到底是什么呢？",
+                "\\t[幽幽子,face_yuyuko_00.png]只是想让你记住一件事——无论未来的路多么崎岖，无论你需要面对多少座看不见的高塔……你都不是一个人。你有楼观剑，你有白楼剑，你有你的半灵，你还有我。",
+                "\\t[幽幽子,face_yuyuko_00.png]所以，哪怕有一天我不得不离开，你也能独自走下去。",
+                "\\t[妖梦,face_youmu_00.png]……谢谢您，幽幽子大人。",
+                "\\t[幽幽子,face_yuyuko_00.png]好啦，闲聊的话就说到这里。团子要凉了，茶也要凉了——先吃饱再说吧。之后恐怕还有真正的战斗在等着我们呢。",
+                "\\t[妖梦,face_youmu_00.png]嗯！",
+                { "type": "function", "function": "function(){ core.setFlag('g_yuyuko_follow', 1); core.events.follow('char_yuyuko.png'); core.removeBlock(28, 61); }" }
+            ]
+        }
+    };
+
+    // ---------------- 开始战斗 ----------------
+    this.beginBattle = function (bossId) {
+        if (core.getFlag('specialAttack')) return;
+        var boss = _self.boss[bossId];
+        if (!boss) return;
+        // 战斗中禁用自动拾取/清怪（防止把BOSS战打穿）
+        core.setFlag('_bossSaveAutoPick', core.getFlag('autoPick', true));
+        core.setFlag('_bossSaveAutoClear', core.getFlag('autoClear', true));
+        core.setFlag('autoPick', false);
+        core.setFlag('autoClear', false);
+        core.setFlag("specialAttack", {
+            "bossInfo": boss,
+            "attackNow": 0,
+            "attackInfo": _self.attack[boss.attack[0]],
+            "bossDamage": 0,
+            "attackDamage": 0,
+            "turn": 0
+        });
+        // 状态栏画布移到游戏区底部（顶部右上角有技能图标）
+        core.createCanvas("specialAttack", 0, core._PY_ - 88, core.__PIXELS__, 88, 55);
+        core.insertAction(boss.beforeBattle, null, null, _self.drawBattleUI);
+    };
+
+    // ---------------- 能量归零触发入口（HUD 调用） ----------------
+    this.startEnergyBoss = function () {
+        if (core.getFlag('specialAttack')) return;
+        // 走事件流换层（直接调 changeFloor 会被换层动画卡住；time:0 跳过动画）
+        core.insertAction([
+            { "type": "changeFloor", "floorId": "f3_12", "loc": [7, 11], "time": 0 }
+        ], null, null, function () {
+            setTimeout(function () { _self.beginBattle('yuyuko'); }, 600);
+        });
+    };
+
+    // ---------------- 绘制战斗 UI ----------------
+    this.drawBattleUI = function () {
+        var special = core.getFlag('specialAttack');
+        if (!special) return;
+        if ((special.bossInfo.ui || {}).type == "hide") return;
+        _self._drawBattleUI_statusBar(special.bossInfo, special.attackInfo);
+    };
+    this._drawBattleUI_statusBar = function (boss, attack) {
+        var ctx = core.dymCanvas.specialAttack;
+        if (!ctx) return;
+        var special = core.getFlag('specialAttack');
+        var smallFont = core.ui._buildFont(12, false);
+        var middleFont = core.ui._buildFont(16, false);
+        core.setTextAlign(ctx, "left");
+        core.setTextBaseline(ctx, "top");
+        core.drawWindowSkin('winskin.png', ctx, 8, 8, 464, 80);
+        core.fillText(ctx, boss.name || boss.enemyId, 24, 24, 'white', smallFont);
+        core.fillText(ctx, "地图伤害/战斗伤害：" + special.attackDamage + "/" + special.bossDamage, 24, 64, 'white', smallFont);
+        core.setTextAlign(ctx, 'right');
+        core.fillText(ctx, attack.name || "", 454, 24, 'white', middleFont);
+        if (attack.type !== "time") core.fillText(ctx, "本阶段回合数：" + special.turn + "/ --", 454, 64, 'white', smallFont);
+        else {
+            if (attack.maxTime != null) core.fillText(ctx, "剩余回合数：" + (attack.maxTime - special.turn), 454, 64, 'white', smallFont);
+            else console.log("注意，本时符没有限定时间！");
+        }
+        if (attack.name != null && boss.ui && boss.ui.bg) core.drawImage('specialAttack', boss.ui.bg, 0, 0, 480, 480, 10, 10);
+        else core.drawBg();
+    };
+
+    // ---------------- 每走一步（时符计时） ----------------
+    this.doAttack = function () {
+        var special = core.getFlag('specialAttack');
+        if (!special) return;
+        var attack = special.attackInfo;
+        special.turn++;
+        attack.action();
+        _self.drawBattleUI();
+        if (attack.type === "time" && attack.maxTime != null && special.turn > attack.maxTime) _self.changeAttack();
+    };
+
+    // ---------------- 战后判定（撞BOSS推进阶段） ----------------
+    this.detectBattle = function (enemyId, damage) {
+        var special = core.getFlag('specialAttack');
+        if (!special) return;
+        if (enemyId == special.bossInfo.enemyId) {
+            special.bossDamage += damage;
+            _self.changeAttack();
+        } else special.attackDamage += damage;
+    };
+
+    // ---------------- 换阶段 ----------------
+    this.changeAttack = function () {
+        var special = core.getFlag('specialAttack');
+        if (!special) return;
+        var boss = special.bossInfo, attack = special.attackInfo;
+        var attackNext = _self.attack[boss.attack[special.attackNow + 1]];
+        // 清除场地
+        var todo = [];
+        for (var x = 3; x < 12; x++) {
+            for (var y = 3; y < 12; y++) {
+                if (core.getBlockId(x, y)) {
+                    core.push(todo, [{ "type": "hide", "loc": [x, y], "remove": true }]);
+                }
+            }
+        }
+        core.push(todo, [{ "type": "waitAsync" }]);
+        if (!attackNext) {
+            core.insertAction(todo, null, null, _self.overBattle);
+            return;
+        }
+        core.push(todo, attack.afterAttack || []);
+        core.push(todo, attackNext.beforeAttack || []);
+        core.insertAction(todo);
+        // 更新变量和UI
+        special.attackNow++;
+        special.attackInfo = attackNext;
+        special.turn = 0;
+        _self.drawBattleUI();
+    };
+
+    // ---------------- 结束战斗 ----------------
+    this.overBattle = function () {
+        var special = core.getFlag('specialAttack');
+        if (!special) return;
+        core.drawBg();
+        core.insertAction(special.bossInfo.afterBattle);
+        core.deleteCanvas("specialAttack");
+        core.removeFlag("specialAttack");
+        // 恢复自动拾取/清怪
+        core.setFlag('autoPick', core.getFlag('_bossSaveAutoPick', true));
+        core.setFlag('autoClear', core.getFlag('_bossSaveAutoClear', true));
+        core.removeFlag('_bossSaveAutoPick');
+        core.removeFlag('_bossSaveAutoClear');
+    };
+
+    // ---------------- 测试入口：T 键（清场后开战） ----------------
+    this.startTestBattle = function () {
+        if (core.getFlag('specialAttack')) return;
+        var todo = [];
+        for (var x = 3; x < 12; x++) {
+            for (var y = 3; y < 12; y++) {
+                if (core.getBlockId(x, y)) {
+                    core.push(todo, [{ "type": "hide", "loc": [x, y], "remove": true }]);
+                }
+            }
+        }
+        core.push(todo, [{ "type": "waitAsync" }]);
+        core.insertAction(todo, null, null, function () { _self.beginBattle('testBoss'); });
+    };
+
+    // ---------------- 钩子安装（战后判定 + 每步计时 + T键） ----------------
+    var _installed = false;
+    function _installHooks() {
+        if (_installed) return;
+        if (!core.events || !core.events.afterBattle || !core.control || !core.control.moveOneStep) return;
+        _installed = true;
+        // 战后：detectBattle
+        var _origAB = core.events.afterBattle;
+        core.events.afterBattle = function (enemyId, x, y, force) {
+            var res;
+            if (_origAB) res = _origAB.call(this, enemyId, x, y, force);
+            try {
+                if (core.getFlag('specialAttack')) {
+                    var dmg = 0;
+                    try { dmg = core.enemys.getDamage(enemyId, x, y, core.status.floorId) || 0; } catch (e) { }
+                    core.plugin.detectBattle(enemyId, dmg);
+                }
+            } catch (e) { console.error('【BOSS战】detectBattle:', e); }
+            return res;
+        };
+        // 每走一步：doAttack（时符计时）
+        var _origMOS = core.control.moveOneStep;
+        core.control.moveOneStep = function (callback) {
+            var res;
+            if (_origMOS) res = _origMOS.call(this, callback);
+            try {
+                if (core.getFlag('specialAttack')) core.plugin.doAttack();
+            } catch (e) { console.error('【BOSS战】doAttack:', e); }
+            return res;
+        };
+        // T 键：测试入口（完整幽幽子流程：传送 f3_12 → BOSS战 → 回庭园剧情）
+        core.registerAction('onkeyUp', 'bossBattleTest', function (e) {
+            if (!core.isPlaying() || core.status.lockControl) return false;
+            if (e.keyCode == 84) { core.plugin.startEnergyBoss(); return true; }
+            return false;
+        }, 60);
+    }
+    if (core.plugin._afterLoadResources) {
+        var _prevALR = core.plugin._afterLoadResources;
+        core.plugin._afterLoadResources = function () {
+            if (_prevALR) _prevALR();
+            _installHooks();
+        };
+    } else {
+        setTimeout(_installHooks, 100);
+        setTimeout(_installHooks, 1000);
+    }
+};
+
+_bossBattlePluginFn();

@@ -302,11 +302,16 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			core.status.hero.statistics.battle++;
 			// 【RGM新增】死怪计数（怨恨特性用）
 			core.setFlag('deadMonsterCount', (core.getFlag('deadMonsterCount', 0) || 0) + 1);
-			// 【RGM新增】无我(#63): 不掉血判胜，能量条 += 预计伤害×3（原版 CE1 var[301]+=got_damage*3）
+			// 【RGM新增】无我(#63): 战斗伤害对能量条的影响提高10%
 			if (core.hasSpecial(special, 63)) {
-				var wuwoDmg = damageInfo.wuwoDmg || 0;
-				if (wuwoDmg > 0) core.setFlag('g_energy_used', (core.getFlag('g_energy_used', 0) || 0) + wuwoDmg * 3);
-				core.drawTip('无我效果，战斗胜利！');
+				var wuwoBonus = Math.floor(damage * 0.1);
+				if (wuwoBonus > 0) core.setFlag('g_energy_used', (core.getFlag('g_energy_used', 0) || 0) + wuwoBonus);
+				core.drawTip('无我效果：能量条影响+10%');
+			}
+			// 【RGM新增】荒芜(#68): 战后所有血瓶治疗量-1（原版 CE1 var[61..64]-1，可叠加至0）
+			if (core.hasSpecial(special, 68)) {
+				core.setFlag('wasteLand', (core.getFlag('wasteLand', 0) || 0) + 1);
+				core.drawTip('荒芜：血瓶治疗量-1');
 			}
 			// 【RGM新增】亡灵计数(#29): 每杀一只亡灵，最低伤害+1
 			if (core.hasSpecial(special, 29)) {
@@ -326,8 +331,6 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}, core.getEnemyValue(enemy, "money", x, y));
 			if (core.hasItem('coin')) money *= 2; // 幸运金币：双倍
 			if (core.hasFlag('curse')) money = 0; // 诅咒效果
-			// 【RGM新增】自尽(#45): 自杀怪无金币经验
-			if (damageInfo.suicided) { money = 0; exp = 0; }
 			core.status.hero.money += money;
 			core.status.hero.statistics.money += money;
 
@@ -336,6 +339,8 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				return curr + core.material.enemys[g[2]].exp;
 			}, core.getEnemyValue(enemy, "exp", x, y));
 			if (core.hasFlag('curse')) exp = 0;
+			// 【RGM新增】自尽(#45): 自杀怪无金币经验
+			if (damageInfo.suicided) { money = 0; exp = 0; }
 			core.status.hero.exp += exp;
 			core.status.hero.statistics.exp += exp;
 
@@ -577,7 +582,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			[60, "诀别", "使役怪物伤害+20%，但战后失去该怪物", "#DC143C"],
 			[61, "天国", "场上天国怪>3只时所有怪物防御+1", "#F0E68C"],
 			[62, "光盾", "受伤转化为回血持续3回合", "#00FFFF"],
-			[63, "无我", "不造成实际伤害但影响能量条300%", "#F5F5DC"],
+			[63, "无我", "战斗伤害对能量条的影响提高10%", "#F5F5DC"],
 			[64, "落英", "怪物每回合自动扣除4%最大生命值", "#FFB6C1"],
 			[65, "汲水", "战斗结束后角色恢复10点生命值", "#008080"],
 			[66, "丰穧", "累计战斗16次后获得1金币", "#228B22"],
@@ -838,6 +843,17 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 							 20 * (core.itemCount('blueKey') || 0) +
 							 30 * (core.itemCount('redKey') || 0);
 			}
+			// 【RGM新增】祝福光环(#52): 当前楼层每只祝福怪，勇士护盾+6（原版 089 @mmd += gv[231].size*6）
+			if (floorId && core.status.maps && core.status.maps[floorId] && core.status.maps[floorId].blocks) {
+				var zhufuCount = 0;
+				core.status.maps[floorId].blocks.forEach(function (blk) {
+					if (!blk.disable) {
+						var blkEnemy = core.material.enemys[blk.event.id];
+						if (blkEnemy && core.hasSpecial(blkEnemy.special, 52)) zhufuCount++;
+					}
+				});
+				if (zhufuCount > 0) hero_mdef += zhufuCount * 6;
+			}
 
 			// 勇士每回合对怪物造成的伤害
 			var hero_per_damage = Math.max(hero_atk - mon_def, 0);
@@ -848,8 +864,6 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			}
 
 			// 如果没有破防，则不可战斗
-			// 【RGM新增】无我(#63): 无视破防，永远打得过（原版 var[10]=0）
-			if (core.hasSpecial(mon_special, 63)) hero_per_damage = Math.max(hero_per_damage, 1);
 			if (hero_per_damage <= 0) return null;
 
 			// 勇士的攻击回合数；为怪物生命除以每回合伤害向上取整
@@ -932,22 +946,11 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				var minDmg = core.getFlag('undeadMinDamage', 0) || 0;
 				damage = Math.max(damage, minDmg);
 			}
-
-			// 【RGM新增】无我(#63): 不造成实际伤害，但能量条按预计伤害×3增长
-			if (core.hasSpecial(mon_special, 63)) {
-				return {
-					"mon_hp": Math.floor(mon_hp),
-					"mon_atk": Math.floor(mon_atk),
-					"mon_def": Math.floor(mon_def),
-					"init_damage": Math.floor(init_damage),
-					"per_damage": Math.floor(per_damage),
-					"hero_per_damage": Math.floor(hero_per_damage),
-					"turn": Math.floor(turn),
-					"damage": 0,
-					"suicided": suicided,
-					"wuwoDmg": Math.floor(damage)
-				};
+			// 【RGM新增】爆击(#32): 第20回合造成勇士防御×3的爆击伤害（原版 090 @md*3）
+			if (core.hasSpecial(mon_special, 32) && turn >= 20) {
+				damage += hero_def * 3;
 			}
+
 			return {
 				"mon_hp": Math.floor(mon_hp),
 				"mon_atk": Math.floor(mon_atk),
@@ -1523,9 +1526,9 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					}
 				}
 
-				// 捕捉
+				// 捕捉（引擎27潜伏 + RGM新增41游荡：靠近自动开战）
 				// 如果要防止捕捉效果，可以直接简单的将 flag:no_ambush 设为true
-				if (enemy && core.enemys.hasSpecial(enemy.special, 27) && !core.hasFlag("no_ambush")) {
+				if (enemy && (core.enemys.hasSpecial(enemy.special, 27) || core.enemys.hasSpecial(enemy.special, 41)) && !core.hasFlag("no_ambush")) {
 					var scan = enemy.zoneSquare ? core.utils.scan2 : core.utils.scan;
 					// 给周围格子加上【捕捉】记号
 					for (var dir in scan) {
@@ -1588,12 +1591,14 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 				if (enemyId1 != null || enemyId2 != null) {
 					var leftHp = core.status.hero.hp - (damage[loc] || 0);
 					if (leftHp > 1) {
-						// 夹击伤害值 = 两个怪物战斗伤害之和的 1/4
-						var d1 = core.getDamage(enemyId1, x, y, floorId);
-						var d2 = core.getDamage(enemyId2, x, y, floorId);
+						// 夹击伤害值 = 两只夹击怪战斗伤害之和的 1/4（原版 RGM：每对贡献该怪战斗伤害的一半）
+						// 左右/上下各为一对（两只同怪），只有一对时另一轴没有怪：
+						// 不能对 null 调 getDamage（会把伤害算成 Infinity 显示???），缺轴按 0 计
+						var d1 = enemyId1 != null ? core.getDamage(enemyId1, x, y, floorId) : 0;
+						var d2 = enemyId2 != null ? core.getDamage(enemyId2, x, y, floorId) : 0;
 						var btDamage1 = d1 != null ? d1 : Infinity;
 						var btDamage2 = d2 != null ? d2 : Infinity;
-						var value = Math.floor((btDamage1 + btDamage2) / 4);
+						var value = Math.floor((btDamage1 * 2 + btDamage2 * 2) / 4);
 						if (value > 0) {
 							if (isFinite(value)) {
 								damage[loc] = (damage[loc] || 0) + value;
@@ -1724,6 +1729,42 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					core.status.hero.hp -= totalBurn;
 					core.updateStatusBar(false, true);
 					core.burnPop = { x: x, y: y, t: 40, dmg: totalBurn };
+				}
+
+				// 游荡(#41)：瞬移落点周围4格有游荡怪 → 强制开战（引擎捕捉同款，防瞬移逃课）
+				if (core.status.maps && core.status.maps[core.status.floorId]) {
+					var ambDirs = [[0,-1],[0,1],[-1,0],[1,0]];
+					for (var ai = 0; ai < 4; ai++) {
+						var ambX = x + ambDirs[ai][0], ambY = y + ambDirs[ai][1];
+						var ambBlk = core.getBlock(ambX, ambY);
+						if (ambBlk && ambBlk.event && ambBlk.event.id) {
+							var ambEn = core.material.enemys[ambBlk.event.id];
+							if (ambEn && core.hasSpecial(ambEn.special, 41)) {
+								core.events.battle(ambBlk.event.id, ambX, ambY);
+								return true;
+							}
+						}
+					}
+				}
+				// 远程(#50)：瞬移落点直线4格内有远程怪 → 扣一次远程伤害（原版每步扣血，瞬移一步到位按落点结算）
+				var remDirs4 = [[0,-1],[0,1],[-1,0],[1,0]];
+				for (var rmi = 0; rmi < 4; rmi++) {
+					for (var rmd = 1; rmd <= 4; rmd++) {
+						var rmx = x + remDirs4[rmi][0] * rmd, rmy = y + remDirs4[rmi][1] * rmd;
+						var rmb = core.getBlock(rmx, rmy);
+						if (!rmb || !rmb.event || !rmb.event.id) continue;
+						var rme = core.material.enemys[rmb.event.id];
+						if (rme && core.hasSpecial(rme.special, 50)) {
+							var rmharm = rme.atk - core.getRealStatus('def');
+							if (core.hasSpecial(rme.special, 2)) rmharm = rme.atk;
+							if (rmharm > 0) {
+								if (rmharm >= core.status.hero.hp) return false;
+								core.status.hero.hp -= rmharm;
+								core.updateStatusBar(false, true);
+								core.burnPop = { x: rmx, y: rmy, t: 40, dmg: rmharm };
+							}
+						}
+					}
 				}
 
 				core.clearMap('hero');

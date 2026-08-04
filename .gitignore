@@ -9,3 +9,7 @@ _expbook_*
 server.js
 _probe*
 test_write.txt
+Codex-H5.bat
+_ins_*.py
+*.bak_*
+project/_tmp_*

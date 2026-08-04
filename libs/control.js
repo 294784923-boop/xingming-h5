@@ -1351,6 +1351,31 @@ control.prototype.startReplay = function (list) {
     this._replay_drawProgress();
     core.updateStatusBar(false, true);
     core.drawTip("开始播放");
+    // 【星冥线】回放看门狗：换层等场景下 move: 的延迟续调 setTimeout 可能丢失，
+    // 导致回放卡在"空闲且不前进"状态。检测到空闲且 toReplay 长时间无进展时自动续调。
+    if (core.status.replay.__watchdog) clearInterval(core.status.replay.__watchdog);
+    core.status.replay.__watchdog = setInterval(function () {
+        var r = core.status.replay;
+        if (!r || !r.replaying) {
+            if (r && r.__watchdog) { clearInterval(r.__watchdog); r.__watchdog = null; }
+            return;
+        }
+        if (r.failed || r.pausing) return;
+        // 有事件/动画/移动在跑时不算卡死（正常等待）
+        if (core.status.event.id || r.animate || core.status.heroMoving) { r.__wdLen = r.toReplay.length; return; }
+        if (r.toReplay.length == 0) return;
+        if (r.__wdLen == null) r.__wdLen = r.toReplay.length;
+        if (r.__wdLen === r.toReplay.length) {
+            if (!r.__wdStuckAt) r.__wdStuckAt = Date.now();
+            else if (Date.now() - r.__wdStuckAt > 2500) {
+                r.__wdStuckAt = 0;
+                core.replay(true);
+            }
+        } else {
+            r.__wdStuckAt = 0;
+            r.__wdLen = r.toReplay.length;
+        }
+    }, 1000);
     this.replay();
 }
 
@@ -1727,7 +1752,38 @@ control.prototype._replayAction_move = function (action) {
 control.prototype._replayAction_item = function (action) {
     if (action.indexOf("item:") != 0) return false;
     var itemId = action.substring(5);
-    if (!core.canUseItem(itemId)) return false;
+    if (!core.canUseItem(itemId)) {
+        // 【星冥线】回放容错：录制时该道具已被自动拾取系统捡入背包（如 f3_2 (11,10) 使役之杖），
+        // 回放时自动拾取因时序差异未执行 → 背包缺失。定点补捡：遍历去过楼层的动态块，
+        // 找该道具的待拾取块直接 getItem（只捡道具、不触发全图 BFS，避免误清 0 伤怪造成经验差）。
+        if (core.isReplaying() && core.status.maps) {
+            try {
+                var _ap = core.getFlag('autoPick', true);
+                var _found = false;
+                for (var _fid in core.status.maps) {
+                    var _bl = core.status.maps[_fid] && core.status.maps[_fid].blocks;
+                    if (!_bl) continue;
+                    var _fc = core.floors[_fid];
+                    for (var _bi = 0; _bi < _bl.length; _bi++) {
+                        var _bk = _bl[_bi];
+                        if (_bk && _bk.event && _bk.event.id == itemId && _bk.event.trigger === 'getItem') {
+                            var _loc = _bk.x + ',' + _bk.y;
+                            var _af = _fc && _fc.afterGetItem && _fc.afterGetItem[_loc];
+                            if (_ap && !_af) {
+                                core.setFlag('__forbidSave__', true);
+                                core.getItem(itemId, 1, _bk.x, _bk.y);
+                                core.removeFlag('__forbidSave__');
+                                _found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (_found) break;
+                }
+            } catch (e) { }
+        }
+        if (!core.canUseItem(itemId)) return false;
+    }
     if (core.material.items[itemId].hideInReplay || core.status.replay.speed == 24) {
         core.useItem(itemId, false, core.replay);
         return true;
@@ -1893,6 +1949,26 @@ control.prototype._replayAction_moveDirectly = function (action) {
     var x = parseInt(pos[0]), y = parseInt(pos[1]);
     var nowx = core.getHeroLoc('x'), nowy = core.getHeroLoc('y');
     var ignoreSteps = core.canMoveDirectly(x, y);
+    // 【星冥线】回放容错：录制时自动拾取系统已把目标格道具捡走（如 f3_0 (3,3) 黄钥匙），
+    // 回放时因事件结束自动拾取时序差异可能未捡 → 道具格（trigger=getItem）判不可达 → 瞬移误报失败。
+    // 此时若目标格是"可自动拾取道具"，补一次拾取再重算可达性（仅回放中生效）。
+    if (ignoreSteps < 0 && core.isReplaying()) {
+        var _pb = core.getBlock(x, y);
+        if (_pb && _pb.event && _pb.event.trigger === 'getItem') {
+            var _pcls = core.getBlockCls(x, y);
+            var _autoPick = core.getFlag('autoPick', true);
+            var _pfloor = core.floors[core.status.floorId];
+            var _pexcl = String(core.getFlag('autoPickExcludeFloors', 'f0_garden') || '').split(',').map(function (s) { return s.trim(); });
+            if ((_pcls === 'items' || _pcls === 'tools' || _pcls === 'constants') && _autoPick &&
+                _pfloor && _pfloor.afterGetItem && !_pfloor.afterGetItem[x + ',' + y] &&
+                _pexcl.indexOf(String(core.status.floorId)) < 0) {
+                core.setFlag('__forbidSave__', true);
+                core.getItem(_pb.event.id, 1, x, y);
+                core.removeFlag('__forbidSave__');
+                ignoreSteps = core.canMoveDirectly(x, y);
+            }
+        }
+    }
     if (!core.moveDirectly(x, y, ignoreSteps)) return false;
     if (core.status.replay.speed == 24) {
         core.replay();
@@ -2150,9 +2226,29 @@ control.prototype._doSL_replayRemain_afterGet = function (id, data) {
 }
 
 control.prototype._doSL_replaySince_afterGet = function (id, data) {
+    if (!data) {
+        core.playSound('操作失败');
+        return core.drawTip("无效的存档");
+    }
+    // 【星冥线】修复：旧版本存档没有版本提示，直接播放剩余录像会在中途
+    // 报"录像与当前游戏数据不一致"，与 replayLoad 一致先做版本检查
+    if (data.version != core.firstData.version) {
+        core.playSound('操作失败');
+        return core.drawTip("存档版本不匹配");
+    }
+    // 【星冥线】修复：正常游玩存档（非回放中按S存的）没有 __toReplay__ 剩余录像，
+    // 但 data.route 记录了从新游戏到存档点的完整操作 → 从头播放该存档的完整录像，
+    // 不再报"该存档没有剩余录像！"（用户诉求：读档后能播放对应录像）
+    if (!data.__toReplay__) {
+        var fullRoute = core.decodeRoute(data.route);
+        if (!fullRoute || fullRoute.length == 0) return alert('该存档没有剩余录像！');
+        core.ui.closePanel();
+        core.startGame(data.hard, data.hero.flags.__seed__, fullRoute);
+        core.drawTip("播放存档完整录像");
+        return;
+    }
     if (data.floorId != core.status.floorId || data.hero.loc.x != core.getHeroLoc('x') || data.hero.loc.y != core.getHeroLoc('y'))
         return alert("楼层或坐标不一致！");
-    if (!data.__toReplay__) return alert('该存档没有剩余录像！');
     core.ui.closePanel();
     core.startReplay(core.decodeRoute(data.__toReplay__));
     core.drawTip("播放存档剩余录像");

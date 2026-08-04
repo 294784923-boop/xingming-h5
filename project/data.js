@@ -1,7 +1,7 @@
 var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d = 
 {
 	"main": {
-		"floorIds": ["f0_garden", "f3_0", "f3_1", "f3_2", "f3_3", "f3_4", "f3_5", "f3_6", "f3_7", "f3_8", "f3_9", "f3_10", "f3_11", "f1_0", "f1_1", "f1_2", "f1_3", "f1_4", "f1_5", "f1_6", "f1_7", "f1_8", "f1_9", "f1_10", "f1_11"],
+		"floorIds": ["f0_garden", "f3_0", "f3_1", "f3_2", "f3_3", "f3_4", "f3_5", "f3_6", "f3_7", "f3_8", "f3_9", "f3_10", "f3_11", "f3_12", "f1_0", "f1_1", "f1_2", "f1_3", "f1_4", "f1_5", "f1_6", "f1_7", "f1_8", "f1_9", "f1_10", "f1_11"],
 		"floorPartitions": [],
 		"images": [
 			"bear.png",
@@ -325,7 +325,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 	"firstData": {
 		"title": "东方星冥线H5测试",
 		"name": "template",
-		"version": "Ver 2.10.6",
+		"version": "Ver 2.10.29",
 		"floorId": "f0_garden",
 		"hero": {
 			"image": "youmu.png",
@@ -356,7 +356,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"39": 73, "40": 73, "78": 11, "89": 11, "94": 11, "95": 73,
 		"9": 6, "10": 4, "13": 6, "14": 20, "53": 11
 	},
-	"flags": {"__noClickMove__": true, "sc_1_avail": true, "sc_2_avail": true, "sc_3_avail": true},
+	"flags": {"__noClickMove__": true, "sc_1_avail": true, "sc_2_avail": true, "sc_3_avail": true, "steelDoorWithoutKey": true},
 			"followers": [],
 			"steps": 0
 		},
@@ -716,8 +716,8 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 		"shops": [
 			{
 				"id": "shop1",
-				"text": "\	[贪婪之神,moneyShop]勇敢的武士啊, 给我40金币就可以：",
-				"textInList": "1F金币商店",
+				"text": "\	[金币商店,moneyShop]你可以花费40金币：",
+				"textInList": "金币商店",
 				"mustEnable": false,
 				"disablePreview": false,
 				"choices": [
@@ -772,39 +772,6 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 								"name": "status:def",
 								"operator": "+=",
 								"value": "1"
-							}
-						]
-					}
-				]
-			},
-			{
-				"id": "shop2",
-				"text": "\t[贪婪之神,expShop]勇敢的武士啊, 给我一定经验就可以：",
-				"textInList": "1F经验商店",
-				"mustEnable": false,
-				"disablePreview": true,
-				"choices": [
-					{
-						"text": "等级+1（100经验）",
-						"need": "status:exp>=100",
-						"action": [
-							{
-								"type": "setValue",
-								"name": "status:exp",
-								"operator": "-=",
-								"value": "100"
-							},
-							{
-								"type": "setValue",
-								"name": "status:lv",
-								"operator": "+=",
-								"value": "1"
-							},
-							{
-								"type": "setValue",
-								"name": "status:hp",
-								"operator": "+=",
-								"value": "1000"
 							}
 						]
 					}

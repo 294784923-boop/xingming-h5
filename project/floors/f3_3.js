@@ -34,24 +34,32 @@ main.floors.f3_3=
 ],
     "firstArrive": [],
     "events": {
-         "10,3": [{"type": "if", "condition": "flag:yuyuko_f3_3", "true": [{"type": "exit"}]}, 
-            "\\t[幽幽子,face_yuyuko_00.png]刚才和【石怪】战斗时，如果你没有把战斗速度调到 10，应该能看到一件事。",
-            "\\t[妖梦,face_youmu_00.png]什么事？",
-            "\\t[幽幽子,face_yuyuko_00.png]战斗开始时，触发了属性协同，获得了 10 点护盾。",
-            "\\t[妖梦,face_youmu_00.png]属性协同？",
-            "\\t[幽幽子,face_yuyuko_00.png]嗯。因为你使役的怪物，和敌方怪物拥有相同的特殊属性。",
-            "\\t[幽幽子,face_yuyuko_00.png]相同的属性相互呼应时，就会在战斗开始前产生额外效果。",
-            "\\t[妖梦,face_youmu_00.png]原来不是石怪突然变好心了啊。",
-            "\\t[幽幽子,face_yuyuko_00.png]石头偶尔也会温柔一点嘛。",
-            "\\t[幽幽子,face_yuyuko_00.png]还有，看到右下角的魔塔能量条了吗？",
-            "\\t[妖梦,face_youmu_00.png]看到了。",
-            "\\t[幽幽子,face_yuyuko_00.png]当你损失HP时，那条能量条也会减少对应的数值。",
-            "\\t[幽幽子,face_yuyuko_00.png]而当它跌到 80%、60%、40%、20% 以下时，敌方角色都会发动符卡。",
-            "\\t[妖梦,face_youmu_00.png]也就是说，受伤越多，越容易把对方逼急？",
-            "\\t[幽幽子,face_yuyuko_00.png]差不多。",
-            "\\t[妖梦,face_youmu_00.png]这听起来一点都不轻松……",
-            "\\t[幽幽子,face_yuyuko_00.png]所以才要好好看着自己的 HP 哦。",
-            {"type": "function", "function": "function(){core.setFlag('yuyuko_f3_3',1)}"}, {"type": "hide", "remove": true}
+        "10,3": [
+            {
+                "type": "if",
+                "condition": "flag:yuyuko_f3_3",
+                "true": [
+                    {
+                        "type": "exit"
+                    }
+                ]
+            },
+            "\t[幽幽子,face_yuyuko_00.png]看到右下角的魔塔能量条了吗？",
+            "\t[妖梦,face_youmu_00.png]看到了。",
+            "\t[幽幽子,face_yuyuko_00.png]当你损失HP时，那条能量条也会减少对应的数值。",
+            "\t[幽幽子,face_yuyuko_00.png]而当这条能量条耗尽时，敌方角色将会发动符卡，也就是会进入BOSS战。",
+            "\t[妖梦,face_youmu_00.png]那就是说，受伤到了那种程度，就会把对方逼急？",
+            "\t[幽幽子,face_yuyuko_00.png]差不多。",
+            "\t[妖梦,face_youmu_00.png]这听起来一点都不轻松……",
+            "\t[幽幽子,face_yuyuko_00.png]所以才要好好看着自己的 HP 哦。",
+            {
+                "type": "function",
+                "function": "function(){\ncore.setFlag('yuyuko_f3_3',1)\n}"
+            },
+            {
+                "type": "hide",
+                "remove": true
+            }
         ]
     },
     "changeFloor": {

@@ -42,6 +42,14 @@ events.prototype.startGame = function (hard, seed, route, callback) {
 
 events.prototype._startGame_start = function (hard, seed, route, callback) {
     core.resetGame(core.firstData.hero, hard, null, core.cloneArray(core.initStatus.maps));
+    // 【星冥线】修复：开新游戏时清除残留的回放状态。播放过录像后
+    // core.status.replay.replaying 残留 true，若不清除，正常游玩会被误判为
+    // "回放中"——升级加点 choices 走回放分支（__action_choices_replaying），
+    // 弹窗不显示、属性无法分配。传 route 时下方 startReplay 会重新置 true，不受影响。
+    core.status.replay = {
+        'replaying': false, 'pausing': false, 'animate': false, 'failed': false,
+        'toReplay': [], 'totalList': [], 'speed': 1.0, 'steps': 0, 'save': [],
+    };
     core.setHeroLoc('x', -1);
     core.setHeroLoc('y', -1);
 
@@ -1071,8 +1079,20 @@ events.prototype.insertAction = function (action, x, y, callback, addToLast) {
         this.startEvents(action, x, y, callback);
     }
     else {
+        var _list0 = core.status.event.data.list[0];
+        // 【星冥线】list 空兜底仅限回放：回放中事件流收尾阶段 checkLevelUp 的
+        // insertAction 在 list 空时原引擎访问 list[0].todo 抛错、choices 丢失
+        // （回放修复必需，op216 升级加点依赖它）。正常游玩保持原引擎行为
+        // （list 空时不入队），避免 startEvents 的 waitHeroToStop 在正常游玩
+        // 流程中卡住升级弹窗（2026-08-03 用户反馈新游戏升级后加点选项不出现）。
+        if (!_list0) {
+            if (core.isReplaying()) {
+                this.startEvents(action, x, y, callback);
+            }
+            return;
+        }
         if (addToLast) {
-            var list = core.status.event.data.list[0].todo;
+            var list = _list0.todo;
             var index = 0;
             for (var index = 0; index < list.length; index++) {
                 if (list[index].type == '_label') {
@@ -1080,8 +1100,10 @@ events.prototype.insertAction = function (action, x, y, callback, addToLast) {
                     break;
                 }
             }
+            // 找不到 _label 时保持原行为（静默丢弃）：autoClean 的事件流收尾插入在
+            // 录制/回放中行为一致，避免回放多跑 BFS 捡走录制时未捡的道具
         }
-        else core.unshift(core.status.event.data.list[0].todo, action);
+        else core.unshift(_list0.todo, action);
         this.setEvents(null, x, y, callback);
     }
 }
@@ -2071,6 +2093,17 @@ events.prototype._action_choices = function (data, x, y, prefix) {
     })
     if (data.choices.length == 0) return this.doAction();
     if (core.isReplaying()) {
+        // 【星冥线】修复回放卡死：事件弹出 choices 弹窗（商店/升级加点等）但录像
+        // 队列 toReplay 队首没有可消费的 choices: 动作（数据改动导致）时，原逻辑
+        // 走 core.myprompt 无限等待输入 → 回放永久卡死。改为立即报错快速失败，
+        // 与 plugins.js registerReplayAction('ignoreInput') 对"孤儿 choices 动作"
+        // 的报错互为反向补齐；正常回放时弹窗前队首必为对应的 choices 动作，不误伤。
+        var nextAction = core.status.replay.toReplay[0];
+        if (typeof nextAction != 'string' || nextAction.indexOf('choices:') != 0
+            || (nextAction == 'choices:none' && !data.timeout)) {
+            core.control._replay_error('录像与当前游戏数据不一致：出现了录像中不存在的choices弹窗（商店/升级加点等），请用当前版本重新录制录像。');
+            return;
+        }
         var action = core.status.replay.toReplay.shift();
         if (action.indexOf('choices:') == 0 && !(action == 'choices:none' && !data.timeout)) {
             var index = action.substring(8);
@@ -2128,8 +2161,12 @@ events.prototype.__action_choices_replaying = function (data, index) {
         selection %= 100;
     } else core.setFlag('timeout', 0);
     core.status.event.selection = selection;
+    // 【星冥线】修复录像二次记录错位：原实现在下方 setTimeout 回调里才 push
+    // route，回放速度快时后续操作（如 move:/down）会先被记录，导致播放完毕
+    // "记录不一致"误报。choices 属于确定性选择操作，应同步记录以保持与录制
+    // 时相同的操作顺序（choices:0 → move:3:11 → down）。
+    core.status.route.push("choices:" + index);
     setTimeout(function () {
-        core.status.route.push("choices:" + index);
         if (selection != 'none') {
             // 检查
             var choice = data.choices[selection];
@@ -2142,7 +2179,13 @@ events.prototype.__action_choices_replaying = function (data, index) {
             }
         }
         core.doAction();
-    }, core.status.replay.speed == 24 ? 1 : 750 / Math.max(1, core.status.replay.speed));
+        // 【星冥线】回放时延迟改 0：原实现按 750/speed 延迟执行选项动作（如升级加点
+        // addStatus），慢速回放时（1x=750ms）后续瞬移的 setTimeout（被 ignoreSteps
+        // 缩短）先触发、战斗先打，加点/属性调整没赶上 → 属性比录制时低、战斗扣血
+        // 偏多（如升级加攻未生效时 played=220 atk=3 vs 6x atk=4，多扣 15HP）。
+        // 改 0（下一 tick）后，选项动作比任何瞬移 setTimeout（≥12ms）都先执行，
+        // 与录制时"先加点后战斗"的顺序一致。
+    }, 0);
     return true;
 }
 

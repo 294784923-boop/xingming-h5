@@ -97,36 +97,36 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"cls": "items",
 		"name": "红血瓶",
 		"text": "，生命+${core.values.redPotion}",
-		"itemEffect": "core.status.hero.hp += core.values.redPotion * core.status.thisMap.ratio",
+		"itemEffect": "core.status.hero.hp += Math.max(0, core.values.redPotion - (core.getFlag('wasteLand', 0) || 0)) * core.status.thisMap.ratio",
 		"itemEffectTip": "，生命+${core.values.redPotion * core.status.thisMap.ratio}",
-		"useItemEffect": "core.status.hero.hp += core.values.redPotion",
+		"useItemEffect": "core.status.hero.hp += Math.max(0, core.values.redPotion - (core.getFlag('wasteLand', 0) || 0))",
 		"canUseItemEffect": "true"
 	},
 	"bluePotion": {
 		"cls": "items",
 		"name": "蓝血瓶",
 		"text": "，生命+${core.values.bluePotion}",
-		"itemEffect": "core.status.hero.hp += core.values.bluePotion * core.status.thisMap.ratio",
+		"itemEffect": "core.status.hero.hp += Math.max(0, core.values.bluePotion - (core.getFlag('wasteLand', 0) || 0)) * core.status.thisMap.ratio",
 		"itemEffectTip": "，生命+${core.values.bluePotion * core.status.thisMap.ratio}",
-		"useItemEffect": "core.status.hero.hp += core.values.bluePotion",
+		"useItemEffect": "core.status.hero.hp += Math.max(0, core.values.bluePotion - (core.getFlag('wasteLand', 0) || 0))",
 		"canUseItemEffect": "true"
 	},
 	"yellowPotion": {
 		"cls": "items",
 		"name": "黄血瓶",
 		"text": "，生命+${core.values.yellowPotion}",
-		"itemEffect": "core.status.hero.hp += core.values.yellowPotion * core.status.thisMap.ratio",
+		"itemEffect": "core.status.hero.hp += Math.max(0, core.values.yellowPotion - (core.getFlag('wasteLand', 0) || 0)) * core.status.thisMap.ratio",
 		"itemEffectTip": "，生命+${core.values.yellowPotion * core.status.thisMap.ratio}",
-		"useItemEffect": "core.status.hero.hp += core.values.yellowPotion",
+		"useItemEffect": "core.status.hero.hp += Math.max(0, core.values.yellowPotion - (core.getFlag('wasteLand', 0) || 0))",
 		"canUseItemEffect": "true"
 	},
 	"greenPotion": {
 		"cls": "items",
 		"name": "绿血瓶",
 		"text": "，生命+${core.values.greenPotion}",
-		"itemEffect": "core.status.hero.hp += core.values.greenPotion * core.status.thisMap.ratio",
+		"itemEffect": "core.status.hero.hp += Math.max(0, core.values.greenPotion - (core.getFlag('wasteLand', 0) || 0)) * core.status.thisMap.ratio",
 		"itemEffectTip": "，生命+${core.values.greenPotion * core.status.thisMap.ratio}",
-		"useItemEffect": "core.status.hero.hp += core.values.greenPotion",
+		"useItemEffect": "core.status.hero.hp += Math.max(0, core.values.greenPotion - (core.getFlag('wasteLand', 0) || 0))",
 		"canUseItemEffect": "true"
 	},
 	"sword0": {

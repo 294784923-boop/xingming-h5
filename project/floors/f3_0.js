@@ -44,15 +44,13 @@ main.floors.f3_0=
                     }
                 ]
             },
-            "\\t[幽幽子,face_yuyuko_00.png]门是符卡对通过者暂时敞开的边界，需要使用特定的通行凭证也就是钥匙才能打开，不同颜色的门需要对应颜色的钥匙才能打开。",
-            "\\t[幽幽子,face_yuyuko_00.png]不过现在看来你是知道钥匙是怎么使用的嘛。",
-            "\\t[幽幽子,face_yuyuko_00.png]需要注意带有骷髅头的门会在你走开的一瞬间马上关上，比如在你右边的那扇黄门。",
-            "\\t[幽幽子,face_yuyuko_00.png]如果害怕走得太快不小心撞到门或怪物，你可以按住 Shift 键进入低速模式，松开按键就恢复正常速度了。",
-            "\\t[幽幽子,face_yuyuko_00.png]来吧，妖梦。让我看看，你还能不能像现在一样，追上我。",
-            "\\t[妖梦,face_youmu_00.png]这话听起来像是要把我丢下。",
+            "\t[幽幽子,face_yuyuko_00.png]门是符卡对通过者暂时敞开的边界，需要使用特定的通行凭证也就是钥匙才能打开，不同颜色的门需要对应颜色的钥匙才能打开。",
+            "\t[幽幽子,face_yuyuko_00.png]不过现在看来你是知道钥匙是怎么使用的嘛。",
+            "\t[幽幽子,face_yuyuko_00.png]来吧，妖梦。让我看看，你还能不能像现在一样，追上我。",
+            "\t[妖梦,face_youmu_00.png]这话听起来像是要把我丢下。",
             {
                 "type": "function",
-                "function": "function(){core.setFlag('yuyuko_f3_0',1)}"
+                "function": "function(){\ncore.setFlag('yuyuko_f3_0',1)\n}"
             },
             {
                 "type": "hide",

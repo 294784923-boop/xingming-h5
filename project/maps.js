@@ -1,5 +1,6 @@
 var maps_90f36752_8815_4be8_b32b_d7fad1d0542e = 
 {
+	"500": {"cls":"terrains","id":"none","name":"隐形墙"},
 	"1": {"cls":"animates","id":"yellowWall","canBreak":true,"animate":1,"doorInfo":{"time":160,"openSound":"door.mp3","closeSound":"door.mp3","keys":{}}},
 	"2": {"cls":"animates","id":"whiteWall","canBreak":true,"animate":1,"doorInfo":{"time":160,"openSound":"door.mp3","closeSound":"door.mp3","keys":{}}},
 	"3": {"cls":"animates","id":"blueWall","canBreak":true,"animate":1,"doorInfo":{"time":160,"openSound":"door.mp3","closeSound":"door.mp3","keys":{}}},
@@ -305,11 +306,12 @@ var maps_90f36752_8815_4be8_b32b_d7fad1d0542e =
 	"433": {"cls":"enemys","id":"e443","name":"古战场茗","faceIds":{"down":"e443"}},
 
 	"434": {"cls":"enemys","id":"e449","name":"冥府花","faceIds":{"left":"e449"}},
+	"435": {"cls":"enemys","id":"e403b","name":"幽幽子","faceIds":{"down":"e403"}},
 
-	"350": {"cls":"animates","id":"arrDown","name":"下楼","canPass":true},
-	"351": {"cls":"animates","id":"arrLeft","name":"下楼","canPass":true},
-	"352": {"cls":"animates","id":"arrRight","name":"上楼","canPass":true},
-	"353": {"cls":"animates","id":"arrUp","name":"上楼","canPass":true},
+	"350": {"cls":"animates","id":"downPortal","name":"下楼","canPass":true},
+	"351": {"cls":"animates","id":"leftPortal","name":"下楼","canPass":true},
+	"352": {"cls":"animates","id":"rightPortal","name":"上楼","canPass":true},
+	"353": {"cls":"animates","id":"upPortal","name":"上楼","canPass":true},
 	"354": {"cls":"terrains","id":"stairBlank","name":"楼梯","canPass":true},
 	"355": {"cls":"terrains","id":"voidWall","name":"虚空墙"},
 	"356": {"cls":"npc48","id":"npcEv4R","name":"幽幽子","bigImage":"char_yuyuko.png","faceIds":{"down":"npcEv4D","left":"npcEv4L","right":"npcEv4R","up":"npcEv4U"}},

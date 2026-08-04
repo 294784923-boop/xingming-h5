@@ -988,6 +988,7 @@ maps.prototype._getBigImageInfo = function (bigImage, face, animate) {
         // case "right": dx = 32 - per_width; dy = 32 - per_height; break;
     }
 
+
     return { sx: sx, sy: sy, per_width: per_width, per_height: per_height, face: face, dx: dx, dy: dy };
 }
 
@@ -1047,15 +1048,36 @@ maps.prototype._drawBlockInfo_bigImage = function (blockInfo, x, y, ctx) {
     var body = "_bigImage_body_" + x + "_" + y;
     var dx = bigImageInfo.dx, dy = bigImageInfo.dy;
 
+    var isYuyuko = bigImage && bigImage.src && bigImage.src.indexOf('char_yuyuko') >= 0;
     switch (bigImageInfo.face) {
         case "down": case "up": case "left": case "right":
-            core.createCanvas(header, px + dx, py + dy, per_width, -dy, 51);
-            this._drawBlockInfo_drawWithFilter(blockInfo, header, function () {
-                core.drawImage(header, bigImage, sx, sy, per_width, -dy, 0, 0, per_width, -dy);
-            });
-            core.createCanvas(body, px + dx, py, per_width, 32, 31);
+            if (-dy > 0) {
+                core.createCanvas(header, px + dx, py + dy, per_width, -dy, 51);
+                if (isYuyuko) {
+                    var _hctx = core.getContextByName(header);
+                    _hctx.canvas.width = per_width;
+                    _hctx.canvas.height = -dy;
+                    _hctx.setTransform(1, 0, 0, 1, 0, 0);
+                    _hctx.canvas.style.width = per_width * core.domStyle.scale + 'px';
+                    _hctx.canvas.style.height = (-dy) * core.domStyle.scale + 'px';
+                }
+                this._drawBlockInfo_drawWithFilter(blockInfo, header, function () {
+                    core.drawImage(header, bigImage, sx, sy, per_width, -dy, 0, 0, per_width, -dy);
+                });
+            }
+            var bodyH = isYuyuko && dy >= 0 ? per_height : 32;
+            core.createCanvas(body, px + dx, py, per_width, bodyH, 31);
+            if (isYuyuko) {
+                // 幽幽子：逻辑像素渲染（不乘 scale/dpr），与跟随者显示一致
+                var _bctx = core.getContextByName(body);
+                _bctx.canvas.width = per_width;
+                _bctx.canvas.height = bodyH;
+                _bctx.setTransform(1, 0, 0, 1, 0, 0);
+                _bctx.canvas.style.width = per_width * core.domStyle.scale + 'px';
+                _bctx.canvas.style.height = bodyH * core.domStyle.scale + 'px';
+            }
             this._drawBlockInfo_drawWithFilter(blockInfo, body, function () {
-                core.drawImage(body, bigImage, sx, sy - dy, per_width, 32, 0, 0, per_width, 32);
+                core.drawImage(body, bigImage, sx, sy - dy, per_width, bodyH, 0, 0, per_width, bodyH);
             })
             break;
         /*case "left":
