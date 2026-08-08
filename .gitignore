@@ -6,6 +6,7 @@ _extensions/
 _expbook_*
 启动服务.exe
 .hermes/
+project/images/_legacy_bullets/
 server.js
 _probe*
 test_write.txt

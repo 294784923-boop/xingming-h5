@@ -253,6 +253,26 @@
     opacity: 0.9;
 }
 
+/* 【星冥线】扩展/竖屏工具栏：flex 单行布局，避免按钮过多换行被固定高度截断 */
+#toolBar.extend {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+#toolBar.extend .tools {
+    float: none;
+    flex: 0 0 auto;
+}
+#toolBar.extend p#hard {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
 p#hard {
     user-select: none;
     width: 6em;

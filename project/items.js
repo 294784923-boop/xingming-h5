@@ -313,8 +313,8 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 		"cls": "tools",
 		"name": "使役之杖",
 		"text": "寄宿着某种妖力的魔杖。使用后进入使役模式，击败怪物后该怪物将会化为使役随从。",
-		"useItemEffect": "(function(){\n\tif(core.getFlag('shiyi_mode',0)){\n\t\tcore.removeFlag('shiyi_mode');\n\t\tcore.drawTip('捕获模式已关闭');\n\t}else{\n\t\tcore.setFlag('shiyi_mode',1);\n\t\tcore.drawTip('捕获模式已开启');\n\t}\n})();",
-		"canUseItemEffect": "true"
+		"useItemEffect": "(function(){\n\tcore.setFlag('shiyi_mode',1);\n\tcore.playItemAnim('shiyiRing',{sound:'138-Darkness01.mp3'});\n\tcore.drawTip('捕获模式已开启');\n})();",
+		"canUseItemEffect": "(function(){return !core.getFlag('shiyi_mode',0);})()"
 	},
 	"fly": {
 		"cls": "constants",
@@ -542,7 +542,7 @@ var items_296f5d02_12fd_4166_a7c1_b5e830c9ee3a =
 	"greenExpBook": {"cls":"items","name":"初级经验书","text":"记载着战斗心得的书卷。经验+2。","itemEffect":"(function(){core.status.hero.exp+=2;core.checkLevelUp();core.insertAction({type:\"tip\",text:\"经验+2\"})})();"},
 	"blueExpBook": {"cls":"items","name":"中级经验书","text":"记载着进阶心得的书卷。经验+6。","itemEffect":"(function(){core.status.hero.exp+=6;core.checkLevelUp();core.insertAction({type:\"tip\",text:\"经验+6\"})})();"},
 	"redExpBook": {"cls":"items","name":"高级经验书","text":"记载着奥义的书卷。经验+20。","itemEffect":"(function(){core.status.hero.exp+=20;core.checkLevelUp();core.insertAction({type:\"tip\",text:\"经验+20\"})})();"},
-	"redCrystal": {"cls":"tools","name":"红水晶","text":"散发着微光的红色水晶。使用后攻击力+1，仅持续一场战斗。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12,filter:'hue-rotate(150deg)'});core.addStatus('atk',1);core.setFlag('crystal_red',1);core.drawTip('攻击力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
-	"blueCrystal": {"cls":"tools","name":"蓝水晶","text":"散发着微光的蓝色水晶。使用后防御力+1，仅持续一场战斗。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12});core.addStatus('def',1);core.setFlag('crystal_blue',1);core.drawTip('防御力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
+	"redCrystal": {"cls":"tools","name":"红水晶","text":"散发着微光的红色水晶。使用后攻击力+1，仅持续一场战斗。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12,filter:'hue-rotate(150deg)'});core.playItemIcon('redCrystal',{iconGlow:'#ffc9a0'});core.addStatus('atk',1);core.setFlag('crystal_red',1);core.drawTip('攻击力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
+	"blueCrystal": {"cls":"tools","name":"蓝水晶","text":"散发着微光的蓝色水晶。使用后防御力+1，仅持续一场战斗。","useItemEffect":"core.playBattleAnim(24,{scale:0.5,fps:12});core.playItemIcon('blueCrystal',{iconGlow:'#aadcff'});core.addStatus('def',1);core.setFlag('crystal_blue',1);core.drawTip('防御力临时+1');core.updateStatusBar()","canUseItemEffect":"true"},
 	"goldCoin": {"cls":"items","name":"金币","text":"闪闪发光的金币。","itemEffect":"(function(){core.status.hero.money+=20;core.insertAction({type:\"tip\",text:\"金币+20\"})})();","itemEffectTip":"，金币+20"},
 }

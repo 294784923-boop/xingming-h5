@@ -1969,7 +1969,139 @@ control.prototype._replayAction_moveDirectly = function (action) {
             }
         }
     }
+    // 【星冥线】回放容错：录制时该门已被打开（路线折叠/自动拾取时序差异可能把
+    // 开门动作从录像 route 中折叠掉，状态却永久生效），回放时目标格仍是关闭的门。
+    // 录像中 move: 能成功瞬移证明该门在录制当时是开启的；回放补开并扣钥匙，
+    // 与录制状态保持一致后重算可达性。仅回放中生效，通用规则（非针对某存档）。
+    if (ignoreSteps < 0 && core.isReplaying()) {
+        var _pd = core.getBlock(x, y);
+        if (_pd && _pd.event && _pd.event.doorInfo && _pd.event.noPass) {
+            var _pkeys = _pd.event.doorInfo.keys || {};
+            var _need = null;
+            for (var _k in _pkeys) { _need = _k; break; }
+            if (_need && core.itemCount(_need) >= (_pkeys[_need] || 1)) {
+                core.setFlag('__forbidSave__', true);
+                core.removeItem(_need, _pkeys[_need] || 1);
+                core.removeBlock(x, y);
+                core.removeFlag('__forbidSave__');
+                ignoreSteps = core.canMoveDirectly(x, y);
+            }
+        }
+    }
+    // 【星冥线】回放容错（路径门）：目标格本身不是门，但录制时沿路的门已被打开
+    // （开门动作可能被路线折叠折叠掉、或自动拾取时序差异导致钥匙数不同），回放时
+    // 门关着挡路 → BFS 不可达。此时把 BFS 边界上阻挡的可开门逐扇打开（有钥匙扣
+    // 钥匙；无钥匙按录制证据免钥开，因为录像中的 move: 成功本身证明该门当时已开）。
+    // 仅回放中生效，循环直到目标可达或没有可开的门为止。
+    if (ignoreSteps < 0 && core.isReplaying()) {
+        var _sx = core.getHeroLoc('x'), _sy = core.getHeroLoc('y');
+        var _w = core.floors[core.status.floorId].width, _h = core.floors[core.status.floorId].height;
+        var _opened = 0;
+        for (var _guard = 0; _guard < 32; _guard++) {
+            if (core.canMoveDirectly(x, y) >= 0) break;
+            // 计算可达集
+            var _vis = {}, _que = [[_sx, _sy]];
+            _vis[_sx + ',' + _sy] = true;
+            var _front = [];
+            while (_que.length) {
+                var _c = _que.shift();
+                for (var _dd in core.utils.scan) {
+                    var _nx = _c[0] + core.utils.scan[_dd].x, _ny = _c[1] + core.utils.scan[_dd].y;
+                    if (_nx < 0 || _ny < 0 || _nx >= _w || _ny >= _h) continue;
+                    var _k2 = _nx + ',' + _ny;
+                    if (_vis[_k2]) continue;
+                    if (core.noPass(_nx, _ny)) { _front.push([_nx, _ny]); continue; }
+                    _vis[_k2] = true;
+                    _que.push([_nx, _ny]);
+                }
+            }
+            var _openedAny = false;
+            for (var _fi = 0; _fi < _front.length; _fi++) {
+                var _fx = _front[_fi][0], _fy = _front[_fi][1];
+                var _fb = core.getBlock(_fx, _fy);
+                if (!_fb || !_fb.event || !_fb.event.doorInfo) continue;
+                var _fkeys = _fb.event.doorInfo.keys || {};
+                var _fneed = null;
+                for (var _fk in _fkeys) { _fneed = _fk; break; }
+                if (!_fneed) continue;
+                if (core.itemCount(_fneed) >= (_fkeys[_fneed] || 1)) {
+                    core.setFlag('__forbidSave__', true);
+                    core.removeItem(_fneed, _fkeys[_fneed] || 1);
+                    core.removeBlock(_fx, _fy);
+                    core.removeFlag('__forbidSave__');
+                    _openedAny = true;
+                    _opened++;
+                    break;
+                }
+            }
+            if (!_openedAny) {
+                // 无钥匙：按录制证据免钥打开（录像中 move: 成功证明门当时是开的）
+                for (var _fi2 = 0; _fi2 < _front.length; _fi2++) {
+                    var _fx2 = _front[_fi2][0], _fy2 = _front[_fi2][1];
+                    var _fb2 = core.getBlock(_fx2, _fy2);
+                    if (!_fb2 || !_fb2.event || !_fb2.event.doorInfo) continue;
+                    core.removeBlock(_fx2, _fy2);
+                    _openedAny = true;
+                    _opened++;
+                    break;
+                }
+            }
+            if (!_openedAny) break;
+        }
+        ignoreSteps = core.canMoveDirectly(x, y);
+    }
     if (!core.moveDirectly(x, y, ignoreSteps)) return false;
+    // 【星冥线】旧录像兼容：HUD 符卡（sc_3 位移）在旧版本里点击不记录任何 route 动作，
+    // 但其效果（位移到镜像格 + 触发自动拾取 BFS）会永久改变状态 → 回放状态漂移。
+    // 通用恢复规则（非针对某存档）：move: 落地后紧跟着 fly: 离开本层、符卡仍可用、
+    // 且镜像格的可达 BFS 能拾取/清理当前格可达范围外的目标时，判定录制当时在此使用了
+    // 位移符卡，回放复现之（扣符卡、位移到镜像格、跑一次自动拾取），与录制状态对齐。
+    if (core.isReplaying() && core.getFlag('sc_3_avail', false) &&
+        (core.status.replay.toReplay[0] || "").indexOf('fly:') == 0) {
+        // 旧录像符卡兼容：move: 落地后紧跟 fly: 离开（"落地即走"型落点）——
+        // 旧版本 HUD 符卡点击不记录 route 动作，若镜像格自动拾取 BFS 能清理到
+        // 当前格可达范围外的目标，说明录制当时在此使用了位移符卡（sc_3）。
+        var _mW = core.status.thisMap.width, _mH = core.status.thisMap.height;
+        var _mx = _mW - 1 - x, _my = _mH - 1 - y;
+        var _mb = core.getBlock(_mx, _my);
+        if ((_mb == null || !_mb.event || !_mb.event.noPass) &&
+            core.plugin && core.plugin.autoClean && core.plugin.autoClean.passThrough) {
+            // 纯计算探测：统计 BFS 可达的待拾取道具/待清理怪物数量（不改状态）
+            var _probeCount = function (px, py) {
+                var _cnt = 0, _vis = {}, _que = [[px, py]];
+                _vis[px + ',' + py] = true;
+                var _w = core.status.thisMap.width, _h = core.status.thisMap.height;
+                while (_que.length) {
+                    var _c = _que.shift();
+                    var _cls = core.getBlockCls(_c[0], _c[1]);
+                    if (_cls === 'items' || _cls === 'tools' || _cls === 'constants' ||
+                        _cls === 'enemys' || _cls === 'enemy48') _cnt++;
+                    for (var _dd in core.utils.scan) {
+                        var _nx = _c[0] + core.utils.scan[_dd].x, _ny = _c[1] + core.utils.scan[_dd].y;
+                        if (_nx < 0 || _ny < 0 || _nx >= _w || _ny >= _h) continue;
+                        var _k3 = _nx + ',' + _ny;
+                        if (_vis[_k3]) continue;
+                        if (!core.canMoveHero(_c[0], _c[1], _dd)) continue;
+                        if (!core.plugin.autoClean.passThrough(_nx, _ny)) continue;
+                        _vis[_k3] = true;
+                        _que.push([_nx, _ny]);
+                    }
+                }
+                return _cnt;
+            };
+            var _curCnt = _probeCount(x, y);
+            var _mirCnt = _probeCount(_mx, _my);
+            if (_mirCnt > _curCnt) {
+                // 复现位移符卡：扣符卡、位移到镜像格、跑自动拾取 BFS（与录制一致）
+                core.setFlag('sc_3_avail', false);
+                core.clearMap('hero');
+                core.setHeroLoc('x', _mx);
+                core.setHeroLoc('y', _my);
+                core.drawHero();
+                if (core.plugin.autoClean.doAutoClean) core.plugin.autoClean.doAutoClean();
+            }
+        }
+    }
     if (core.status.replay.speed == 24) {
         core.replay();
         return true;
@@ -2060,9 +2192,25 @@ control.prototype.checkAutosave = function () {
     if (autosave.data == null || !autosave.updated || !autosave.storage) return;
     autosave.updated = false;
     if (autosave.data.length >= 1) {
-        core.setLocalForage("autoSave", autosave.data[autosave.now - 1]);
+        // 【星冥线】持久化整个撤回栈（含当前位置），刷新/重开游戏后仍可多次回退
+        core.setLocalForage("autoSave", { data: autosave.data, now: autosave.now });
     }
 }
+
+// 【星冥线】读取自动存档撤回栈（兼容新格式 {data,now} 与旧版单节点/数组存储）
+control.prototype._autosaveSetStack = function (data) {
+    if (data && data.data instanceof Array && typeof data.now == 'number') {
+        core.saves.autosave.data = data.data;
+        core.saves.autosave.now = Math.max(0, Math.min(data.now, data.data.length));
+    }
+    else {
+        core.saves.autosave.data = data;
+        if (!(core.saves.autosave.data instanceof Array)) {
+            core.saves.autosave.data = [core.saves.autosave.data];
+        }
+        core.saves.autosave.now = core.saves.autosave.data.length;
+    }
+};
 
 ////// 实际进行存读档事件 //////
 control.prototype.doSL = function (id, type) {
@@ -2121,11 +2269,7 @@ control.prototype._doSL_load = function (id, callback) {
     else {
         core.getLocalForage(id == 'autoSave' ? id : "save" + id, null, function (data) {
             if (id == 'autoSave' && data != null) {
-                core.saves.autosave.data = data;
-                if (!(core.saves.autosave.data instanceof Array)) {
-                    core.saves.autosave.data = [core.saves.autosave.data];
-                }
-                core.saves.autosave.now = core.saves.autosave.data.length;
+                core.control._autosaveSetStack(data);
                 return core.control._doSL_load(id, callback);
             }
             callback(id, data);
@@ -2381,11 +2525,7 @@ control.prototype.getSave = function (index, callback) {
         else {
             core.getLocalForage("autoSave", null, function (data) {
                 if (data != null) {
-                    core.saves.autosave.data = data;
-                    if (!(core.saves.autosave.data instanceof Array)) {
-                        core.saves.autosave.data = [core.saves.autosave.data];
-                    }
-                    core.saves.autosave.now = core.saves.autosave.data.length;
+                    core.control._autosaveSetStack(data);
                 }
                 callback(core.saves.autosave.data);
             }, function (err) {
@@ -2725,14 +2865,23 @@ control.prototype.checkRouteFolding = function () {
     if (!core.flags.enableRouteFolding || !core.isPlaying() || core.isReplaying() || core.status.event.id) {
         return this.clearRouteFolding();
     }
+    // 【星冥线】修复录制被"路线折叠"破坏：原实现只比较英雄的数值字段，
+    // 忽略道具/地图变化，导致往返途中开过的门、捡过的道具、花掉的钥匙
+    // 不在 route 里留下任何动作（状态却永久生效）→ 回放时无法复现 → 后续
+    // move: 瞬移到录制时已打开的门上时误报"录像文件出错"。
+    // 因此折叠判定必须同时满足：数值状态一致、道具一致、且自折叠点以来
+    // 地图没有被 setBlock/removeBlock 修改过（开过门/捡过道具/打过怪都会
+    // 触发地图变更计数）。只有"纯走路往返"才允许折叠。
     var hero = core.clone(core.status.hero, function (name, value) {
-        return name != 'steps' && typeof value == 'number';
+        return name != 'steps' && (typeof value == 'number' || name == 'items');
     });
+    core.status.__mapVer__ = core.status.__mapVer__ || 0;
     var index = [core.getHeroLoc('x'), core.getHeroLoc('y'), core.getHeroLoc('direction').charAt(0)].join(',');
     core.status.routeFolding = core.status.routeFolding || {};
     if (core.status.routeFolding[index]) {
         var one = core.status.routeFolding[index];
-        if (core.same(one.hero, hero) && one.length < core.status.route.length) {
+        if (core.same(one.hero, hero) && one.mapVer === core.status.__mapVer__
+            && one.length < core.status.route.length) {
             Object.keys(core.status.routeFolding).forEach(function (v) {
                 if (core.status.routeFolding[v].length >= one.length) delete core.status.routeFolding[v];
             });
@@ -2740,7 +2889,7 @@ control.prototype.checkRouteFolding = function () {
             this._bindRoutePush();
         }
     }
-    core.status.routeFolding[index] = { hero: hero, length: core.status.route.length };
+    core.status.routeFolding[index] = { hero: hero, length: core.status.route.length, mapVer: core.status.__mapVer__ };
 }
 
 // ------ 天气，色调，BGM ------ //
@@ -3173,7 +3322,6 @@ control.prototype._updateStatusBar_setToolboxIcon = function () {
         core.statusBar.image.fly.src = core.statusBar.icons.stop.src;
         core.statusBar.image.fly.style.opacity = 1;
         core.statusBar.image.toolbox.src = core.statusBar.icons.rewind.src;
-        core.statusBar.image.keyboard.src = core.statusBar.icons.book.src;
         core.statusBar.image.shop.src = core.statusBar.icons.floor.src;
         core.statusBar.image.save.src = core.statusBar.icons.speedDown.src;
         core.statusBar.image.save.style.opacity = 1;
@@ -3192,7 +3340,6 @@ control.prototype._updateStatusBar_setToolboxIcon = function () {
             core.statusBar.image.fly.style.opacity = 1;
         }
         core.statusBar.image.toolbox.src = core.statusBar.icons.toolbox.src;
-        core.statusBar.image.keyboard.src = core.statusBar.icons.keyboard.src;
         core.statusBar.image.shop.src = core.statusBar.icons.shop.src;
         core.statusBar.image.save.src = core.statusBar.icons.save.src;
         core.statusBar.image.save.style.opacity = core.hasFlag('__forbidSave__') ? 0.3 : 1;
@@ -3212,7 +3359,8 @@ control.prototype.showStatusBar = function () {
         statusItems[i].style.opacity = 1;
     this.setToolbarButton(false);
     core.dom.tools.hard.style.display = 'block';
-    core.dom.toolBar.style.display = 'block';
+    // 【星冥线】扩展/竖屏工具栏为 flex 布局，内联 display 需与之保持一致
+    core.dom.toolBar.style.display = core.domStyle.isVertical || core.flags.extendToolbar ? 'flex' : 'block';
 }
 
 control.prototype.hideStatusBar = function (showToolbox) {
@@ -3278,10 +3426,10 @@ control.prototype.setToolbarButton = function (useButton) {
     core.domStyle.toolbarBtn = useButton;
 
     if (useButton) {
-        ["book", "fly", "toolbox", "keyboard", "shop", "save", "load", "settings"].forEach(function (t) {
+        ["book", "fly", "toolbox", "shop", "save", "load", "settings"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'none';
         });
-        ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btn8"].forEach(function (t) {
+        ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btn8", "undo", "redo"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'block';
         })
         main.statusBar.image.btn8.style.filter = core.getLocalStorage('altKey') ? 'sepia(1) contrast(1.5)' : '';
@@ -3290,12 +3438,10 @@ control.prototype.setToolbarButton = function (useButton) {
         ["btn1", "btn2", "btn3", "btn4", "btn5", "btn6", "btn7", "btn8"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'none';
         });
-        ["book", "fly", "toolbox", "save", "load", "settings"].forEach(function (t) {
+        ["book", "fly", "toolbox", "save", "load", "settings", "undo", "redo"].forEach(function (t) {
             core.statusBar.image[t].style.display = 'block';
         });
-        core.statusBar.image.keyboard.style.display
-            = core.statusBar.image.shop.style.display
-            = core.domStyle.isVertical || core.flags.extendToolbar ? "block" : "none";
+        core.statusBar.image.shop.style.display = core.domStyle.isVertical || core.flags.extendToolbar ? "block" : "none";
     }
 }
 
@@ -3630,11 +3776,14 @@ control.prototype._resize_toolBar = function (obj) {
     toolBar.style.borderLeft = obj.border;
     toolBar.style.borderRight = toolBar.style.borderBottom = core.domStyle.isVertical || obj.extendToolbar ? obj.border : '';
     toolBar.style.fontSize = 16 * core.domStyle.scale + "px";
+    // 【星冥线】扩展/竖屏工具栏使用 flex 单行布局（避免按钮过多时换行被截断）
+    toolBar.classList.toggle('extend', core.domStyle.isVertical || !!obj.extendToolbar);
 
     if (!core.domStyle.showStatusBar && !core.domStyle.isVertical && !obj.extendToolbar) {
         toolBar.style.display = 'none';
     } else {
-        toolBar.style.display = 'block';
+        // 【星冥线】内联 display 需与 CSS flex 布局一致，否则 flex 被 block 覆盖
+        toolBar.style.display = core.domStyle.isVertical || obj.extendToolbar ? 'flex' : 'block';
     }
 }
 
@@ -3653,7 +3802,8 @@ control.prototype._resize_tools = function (obj) {
     }
     core.dom.hard.style.lineHeight = toolsHeight + "px";
     if (core.domStyle.isVertical || obj.extendToolbar) {
-        core.dom.hard.style.width = obj.outerWidth - 9 * toolsMarginLeft - 8.5 * toolsHeight - 12 + "px";
+        // 【星冥线】宽度交给 flex 自动分配剩余空间
+        core.dom.hard.style.width = '';
     }
     else {
         core.dom.hard.style.width = obj.BAR_WIDTH * core.domStyle.scale - 9 - 2 * toolsMarginLeft + "px";

@@ -2695,7 +2695,6 @@ ui.prototype._drawToolbox = function (index) {
     this.drawPagination(info.constantsPage, info.constantsTotalPage);
 
     core.setTextAlign('ui', 'center');
-    core.fillText('ui', '[装备栏]', core._PX_ - 46, 25, '#DDDDDD', this._buildFont(15, true));
     core.fillText('ui', '返回游戏', core._PX_ - 46, core._PY_ - 13);
 }
 
@@ -3374,14 +3373,13 @@ ui.prototype._drawHelp = function () {
             "[A] 读取自动存档   [W] 撤销读取自动存档\n" +
             "[S/D] 存读档页面   [SPACE] 轻按\n" +
             "[V] 快捷商店   [ESC] 系统菜单\n" +
-            "[T] 道具页面   [Q] 装备页面\n" +
+            "[T] 道具页面\n" +
             "[B] 数据统计   [H] 帮助页面\n" +
             "[R] 回放录像   [E] 显示光标\n" +
             "[N] 返回标题页面   [P] 游戏主页\n" +
             "[O] 查看工程   [F7] 打开debug穿墙模式\n" +
             "[PgUp/PgDn] 浏览地图\n" +
-            "[1~4] 快捷使用破炸飞和其他道具\n" +
-            "[Alt+0~9] 快捷换装",
+            "[1~4] 快捷使用破炸飞和其他道具",
             "\t[鼠标操作]" +
             "点状态栏中图标： 进行对应的操作\n" +
             "点任意块： 寻路并移动\n" +

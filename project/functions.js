@@ -977,12 +977,6 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 			// 商店长按时忽略
 			if (core.status.onShopLongDown) return core.status.onShopLongDown = false;
 
-			// Alt+0~9，快捷换上套装
-			if (altKey && keyCode >= 48 && keyCode <= 57) {
-				core.items.quickLoadEquip(keyCode - 48);
-				return;
-			}
-
 			// 根据keyCode值来执行对应操作
 			switch (keyCode) {
 				case 27: // ESC：打开菜单栏
@@ -1011,9 +1005,6 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					break;
 				case 84: // T：打开道具栏
 					core.openToolbox(true);
-					break;
-				case 81: // Q：打开装备栏
-					core.openEquipbox(true);
 					break;
 				case 90: // Z：转向
 					core.turnHero();
@@ -1840,7 +1831,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					core.drawImage(ctx, core.statusBar.icons.atk, 268, 6, 25, 25);
 					var atkVal = core.getRealStatus('atk'), atkColor = core.getFlag('crystal_red',0) ? '#FF6666' : (core.getFlag('sc_meizhan_active',false) ? '#FFD700' : undefined);
 					fill(core.formatBigNumber(atkVal), 304, 26, atkColor);
-					if (core.getFlag('sc_meizhan_active', false)) { ctx.font = 'bold 10px Verdana'; ctx.textAlign = 'left'; ctx.fillStyle = '#FFD700'; ctx.fillText('+1', 304 + ctx.measureText(core.formatBigNumber(atkVal)).width + 4, 26); ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor); }
+					if (core.getFlag('sc_meizhan_active', false)) { var _atkS = core.formatBigNumber(atkVal); ctx.font = (/\w+/.test(_atkS) ? 'italic ' : '') + 'bold 18px Verdana'; var _w = ctx.measureText(_atkS).width; ctx.font = 'bold 10px Verdana'; ctx.textAlign = 'left'; ctx.fillStyle = '#FFD700'; ctx.fillText('+1', 304 + _w + 3, 26); ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor); }
 					ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor);
 					// Row 1 (y=38): 金币 | 护盾(mdef) | 防御
 						core.drawImage(ctx, core.statusBar.icons.money, 6, 38, 25, 25);
@@ -1918,7 +1909,7 @@ var functions_d6ad677b_427a_4623_b50f_a445a3b0ef8a =
 					core.drawImage(ctx, core.statusBar.icons.atk, 6, 111, 25, 25);
 					var atkVal = core.getRealStatus('atk'), atkColor = core.getFlag('crystal_red',0) ? '#FF6666' : (core.getFlag('sc_meizhan_active',false) ? '#FFD700' : undefined);
 					fill(core.formatBigNumber(atkVal), 42, 131, atkColor);
-					if (core.getFlag('sc_meizhan_active', false)) { ctx.font = 'bold 10px Verdana'; ctx.textAlign = 'left'; ctx.fillStyle = '#FFD700'; ctx.fillText('+1', 42 + ctx.measureText(core.formatBigNumber(atkVal)).width + 4, 131); ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor); }
+					if (core.getFlag('sc_meizhan_active', false)) { var _atkS = core.formatBigNumber(atkVal); ctx.font = (/\w+/.test(_atkS) ? 'italic ' : '') + 'bold 18px Verdana'; var _w = ctx.measureText(_atkS).width; ctx.font = 'bold 10px Verdana'; ctx.textAlign = 'left'; ctx.fillStyle = '#FFD700'; ctx.fillText('+1', 42 + _w + 3, 131); ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor); }
 					core.drawImage(ctx, core.statusBar.icons.def, 6, 145, 25, 25);
 					fill(core.formatBigNumber(core.getRealStatus('def')), 42, 165, core.getFlag('crystal_blue',0) ? '#6666FF' : undefined);
 					ctx.fillStyle = core.arrayToRGBA(core.status.globalAttribute.statusBarColor);

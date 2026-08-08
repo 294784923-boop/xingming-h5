@@ -573,9 +573,10 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				var hpGain = hero.lv * 10 + 140;
 				hero.hp += hpGain;
 				core.setFlag('expThreshold', threshold + 8);
-				// 【星冥线】升级动画：RGM 4号「升级」（16帧 + 第0帧SE「shengji」）+ 第5帧全屏白光
+				// 【星冥线】升级动画：RGM 4号「升级」（16帧 + 第0帧SE「shengji」）
+				// 闪光按 RGM timing 复刻：第0帧 flash_scope=0 角色白闪（升级是角色闪光，不做全屏闪光）
 				core.playBattleAnim(4, {fps: 15});
-				core.screenFlash({delay: 340, hold: 260, fade: 200});
+				core.heroFlash();
 				var lvMsg = "升级至" + hero.lv + "级，HP +" + hpGain + "! 请选择：";
 				// 【星冥线】升级加点弹窗：非回放时延迟 200ms 启动新事件流，避开
 				// 换层/BFS 自动拾取收尾的 data 清理窗口（收尾同步执行，200ms
@@ -634,7 +635,19 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				core.ui.drawStatusBar();
 			};
 			// 符卡总入口
-			core.useSpellCard = function(idx) { if (!core.isPlaying()||(core.status.event&&core.status.event.id)) return; if (!core.getFlag('sc_'+idx+'_avail',false)) { core.drawTip('该符卡已使用'); return; } if (idx===1) core._sc1(); else if (idx===2) core._sc2(); else if (idx===3) core._sc3(); };
+			core.useSpellCard = function(idx) {
+				if (!core.isPlaying()||(core.status.event&&core.status.event.id)) return;
+				if (!core.getFlag('sc_'+idx+'_avail',false)) { core.drawTip('该符卡已使用'); return; }
+				// 【星冥线】录制修复：HUD 符卡点击此前完全不写 route（且被 e.stopPropagation
+				// 拦截，连 click: 都不记），导致位移类符卡（sc_3）在回放中缺失 → 状态漂移。
+				// 真实游玩时记一条 spell: 动作，回放时由注册的 replay action 消费。
+				// 回放时也必须记录（引擎二次记录机制，与移动/瞬移一致），
+				// 否则 _replay_finished 检测 route.length != totalList.length 报“记录不一致”。
+				if (core.status.route && core.status.route.push) {
+					core.status.route.push("spell:" + idx);
+				}
+				if (idx===1) core._sc1(); else if (idx===2) core._sc2(); else if (idx===3) core._sc3();
+			};
 			// 瞑斩: 攻击+1持续6回合
 			core._sc1 = function() { var _sc=this; core._showSkillImage('youmuskill1.png', function(){ core.playSound('zone'); core.setFlag('sc_1_avail',false); core.setFlag('sc_meizhan_active',true); core.setFlag('sc_meizhan_turns',6); core.playBattleAnim(12,{fps:12}); core.updateDamage(); core.drawTip(core._SC_FULL[0]); core.ui.drawStatusBar(); if (core.plugin&&core.plugin.autoClean) core.plugin.autoClean.doAutoClean(); }); };
 			// 断迷剑: 斩断面前一堵墙
@@ -646,6 +659,15 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				var gd = core.dom && core.dom.gameDraw; if (!gd) return;
 				var imgs = core.material && core.material.images && core.material.images.images; if (!imgs) return;
 				var img = imgs[imgName]; if (!img) return;
+				// 【星冥线】回放时同步回调：本函数的插图动画约 1.55s（350+800+400ms）后
+				// 才执行 onDone，而 spell 回放动作在 useSpellCard 返回后立即 core.replay()
+				// 继续——若效果（sc_2 破墙 / sc_3 位移 / sc_1 挂 flag）晚于后续动作落地，
+				// 回放状态会按"未用符卡"的顺序执行 → 漂移。回放（含 replayChecking）时
+				// 直接同步调用 onDone，效果与录制顺序一致；真实游玩保持原动画。
+				if (core.isReplaying && core.isReplaying()) {
+					if (onDone) onDone();
+					return;
+				}
 				// 自适应屏幕尺寸：插图占视口短边的50%，最小200px
 				var gdRect = gd.getBoundingClientRect();
 				var gdW = gdRect.width;
@@ -708,6 +730,221 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 				setTimeout(function () { fl.style.opacity = '' + peak; }, delay);
 				setTimeout(function () { fl.style.transition = 'opacity ' + fade + 'ms ease-out'; fl.style.opacity = '0'; }, delay + hold);
 				setTimeout(function () { if (fl.parentNode) fl.parentNode.removeChild(fl); }, delay + hold + fade + 100);
+			};
+		// 【星冥线】角色闪光工具（对应 RGM timing 的 flash_scope=0 目标闪光：角色本体瞬间变白再淡出）
+			core.heroFlash = function(opts) {
+				opts = opts || {};
+				var heroCanvas = document.getElementById('hero');
+				if (!heroCanvas) return;
+				// RGM「升级」第0帧：白色(255,255,255,255) 目标闪光，持续5帧（约167ms@30fps）
+				var hold = opts.hold != null ? opts.hold : 90;
+				var fade = opts.fade != null ? opts.fade : 150;
+				var oldTransition = heroCanvas.style.transition;
+				var oldFilter = heroCanvas.style.filter || '';
+				heroCanvas.style.transition = 'none';
+				heroCanvas.style.filter = 'brightness(40) saturate(0)';
+				setTimeout(function () {
+					heroCanvas.style.transition = 'filter ' + fade + 'ms linear';
+					heroCanvas.style.filter = oldFilter || 'none';
+				}, hold);
+				setTimeout(function () {
+					heroCanvas.style.transition = oldTransition;
+					heroCanvas.style.filter = oldFilter || 'none';
+				}, hold + fade + 80);
+			};
+		// 【星冥线】道具使用动画：旋转光环 + 对应道具图标（纯代码绘制，无需动画素材）
+		// itemId 为道具id（自动取 items 图标表对应图标）；opts.color 光环主色，opts.iconGlow 图标光晕色，opts.sound 音效
+			core.playItemAnim = function(itemId, opts) {
+				opts = opts || {};
+				var gd = core.dom && core.dom.gameDraw; if (!gd) return;
+				var h = core.status && core.status.hero; if (!h || !h.loc) return;
+				var img = core.material && core.material.images && core.material.images.items; if (!img) return;
+				var icon = (core.material.icons && core.material.icons.items && core.material.icons.items[itemId]);
+				if (icon == null) return;
+				var TILE = 32, S = 160, ICON_H = 32;
+				var ox = core.bigmap ? (core.bigmap.offsetX || 0) : 0;
+				var oy = core.bigmap ? (core.bigmap.offsetY || 0) : 0;
+				var gs = (core.domStyle && core.domStyle.scale) || 1;
+				var cv = document.createElement('canvas');
+				cv.width = S; cv.height = S;
+				cv.style.cssText = 'position:absolute;z-index:200;pointer-events:none;';
+				// 画布中心对齐角色所在格的中心（tile 中心 = tile*32 + 16）
+				cv.style.left = Math.round((h.loc.x * TILE + ox + TILE / 2 - S / 2) * gs) + 'px';
+				cv.style.top = Math.round((h.loc.y * TILE + oy + TILE / 2 - S / 2) * gs) + 'px';
+				cv.style.width = Math.round(S * gs) + 'px';
+				cv.style.height = Math.round(S * gs) + 'px';
+				gd.appendChild(cv);
+				var ctx = cv.getContext('2d');
+				// 颜色工具：由主色派生光环/符文/粒子等配色
+				function hex2rgb(hex) {
+					var n = parseInt(String(hex).charAt(0) == '#' ? String(hex).substring(1) : hex, 16);
+					return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+				}
+				function mix(c1, c2, t) {
+					return [Math.round(c1[0] + (c2[0] - c1[0]) * t), Math.round(c1[1] + (c2[1] - c1[1]) * t), Math.round(c1[2] + (c2[2] - c1[2]) * t)];
+				}
+				function rgba(c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
+				var main = hex2rgb(opts.color || '#a868ff');
+				var glow = hex2rgb(opts.iconGlow || '#ffdc96');
+				var white = [255, 255, 255], black = [0, 0, 0];
+				// 开场角色白闪 + 音效
+				core.heroFlash();
+				if (opts.sound) core.playSound(opts.sound);
+				var DUR = 1050;
+				var t0 = performance.now();
+				var particles = [];
+				for (var pi = 0; pi < 12; pi++) {
+					var pa = Math.random() * Math.PI * 2;
+					particles.push({ a: pa, spd: 26 + Math.random() * 34, dist: 0, size: 1 + Math.random() * 2.2 });
+				}
+				function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+				function tick(now) {
+					if (!cv.parentNode) return;
+					var p = Math.min((now - t0) / DUR, 1);
+					ctx.clearRect(0, 0, S, S);
+					var c = S / 2;
+					// 光环半径展开；整体透明度末尾淡出
+					var grow = easeOut(p);
+					var r = 16 + 36 * grow;
+					var alpha = p < 0.82 ? 1 : Math.max(0, 1 - (p - 0.82) / 0.18);
+					var ang = p * Math.PI * 1.5;
+					// 中央主色光晕
+					var glowR = r * 1.35 * (0.9 + 0.1 * Math.sin(p * Math.PI * 4));
+					var grad = ctx.createRadialGradient(c, c, 0, c, c, glowR);
+					grad.addColorStop(0, rgba(main, 0.35));
+					grad.addColorStop(1, rgba(main, 0));
+					ctx.fillStyle = grad;
+					ctx.globalAlpha = alpha;
+					ctx.beginPath(); ctx.arc(c, c, glowR, 0, Math.PI * 2); ctx.fill();
+					if (alpha > 0) {
+						// 旋转光环：外圈 + 内圈
+						ctx.lineWidth = 2.5;
+						ctx.strokeStyle = rgba(main, 0.95);
+						ctx.beginPath(); ctx.arc(c, c, r, 0, Math.PI * 2); ctx.stroke();
+						ctx.lineWidth = 1.2;
+						ctx.strokeStyle = rgba(mix(main, black, 0.25), 0.7);
+						ctx.beginPath(); ctx.arc(c, c, r * 0.72, 0, Math.PI * 2); ctx.stroke();
+						// 符文刻度（随光环旋转）
+						var n = 12;
+						ctx.lineWidth = 2;
+						for (var i = 0; i < n; i++) {
+							var a2 = ang + i * Math.PI * 2 / n;
+							ctx.strokeStyle = rgba(mix(main, white, 0.35), 0.85 * alpha);
+							ctx.beginPath();
+							ctx.moveTo(c + Math.cos(a2) * (r - 5), c + Math.sin(a2) * (r - 5));
+							ctx.lineTo(c + Math.cos(a2) * (r + 5), c + Math.sin(a2) * (r + 5));
+							ctx.stroke();
+						}
+						// 反向旋转的契约方印（双正方形）
+						ctx.save();
+						ctx.translate(c, c);
+						ctx.rotate(-ang * 0.7);
+						ctx.strokeStyle = rgba(mix(main, white, 0.15), 0.65 * alpha);
+						ctx.lineWidth = 1.6;
+						for (var s = 0; s < 2; s++) {
+							ctx.beginPath();
+							for (var k = 0; k < 4; k++) {
+								var a3 = k * Math.PI / 2 + (s ? Math.PI / 4 : 0);
+								var rr = s ? r * 0.42 : r * 0.58;
+								if (k == 0) ctx.moveTo(Math.cos(a3) * rr, Math.sin(a3) * rr);
+								else ctx.lineTo(Math.cos(a3) * rr, Math.sin(a3) * rr);
+							}
+							ctx.closePath();
+							ctx.stroke();
+						}
+						ctx.restore();
+						// 粒子向外扩散
+						particles.forEach(function (pt) {
+							pt.dist += pt.spd;
+							var pa2 = Math.min(1, pt.dist / 80);
+							ctx.fillStyle = rgba(mix(main, white, 0.25), 0.9 * alpha * pa2);
+							ctx.beginPath();
+							ctx.arc(c + Math.cos(pt.a) * pt.dist, c + Math.sin(pt.a) * pt.dist, pt.size, 0, Math.PI * 2);
+							ctx.fill();
+						});
+					}
+					// 道具图标：从法阵中央升起悬停在角色头顶
+					var iconP = Math.min(1, p / 0.38);
+					if (iconP > 0) {
+						var iconScale = 0.55 + 0.5 * (1 - Math.pow(1 - iconP, 3));
+						var bob = Math.sin(p * Math.PI * 3) * 3;
+						var rise = (1 - iconP) * 18;
+						var iconY = c - 34 - rise - bob;
+						var iw = 30 * iconScale;
+						// 图标背后的光晕
+						var igrad = ctx.createRadialGradient(c, iconY, 0, c, iconY, iw * 1.25);
+						igrad.addColorStop(0, rgba(glow, 0.55 * alpha * iconP));
+						igrad.addColorStop(1, rgba(glow, 0));
+						ctx.fillStyle = igrad;
+						ctx.globalAlpha = 1;
+						ctx.beginPath(); ctx.arc(c, iconY, iw * 1.25, 0, Math.PI * 2); ctx.fill();
+						ctx.globalAlpha = alpha * iconP;
+						ctx.drawImage(img, 0, ICON_H * icon, 32, 32, c - iw / 2, iconY - iw / 2, iw, iw);
+						ctx.globalAlpha = 1;
+					}
+					if (p < 1) requestAnimationFrame(tick);
+					else if (cv.parentNode) cv.parentNode.removeChild(cv);
+				}
+				requestAnimationFrame(tick);
+			};
+		// 【星冥线】道具图标浮现动画：只在角色头顶浮现对应道具图标（用于叠加在原有动画之上，如红蓝水晶充能动画）
+		// 与 playItemAnim 不同：不带光环旋转，仅图标升起+光晕+淡出
+			core.playItemIcon = function(itemId, opts) {
+				opts = opts || {};
+				var gd = core.dom && core.dom.gameDraw; if (!gd) return;
+				var h = core.status && core.status.hero; if (!h || !h.loc) return;
+				var img = core.material && core.material.images && core.material.images.items; if (!img) return;
+				var icon = (core.material.icons && core.material.icons.items && core.material.icons.items[itemId]);
+				if (icon == null) return;
+				var TILE = 32, S = 160, ICON_H = 32;
+				var ox = core.bigmap ? (core.bigmap.offsetX || 0) : 0;
+				var oy = core.bigmap ? (core.bigmap.offsetY || 0) : 0;
+				var gs = (core.domStyle && core.domStyle.scale) || 1;
+				var cv = document.createElement('canvas');
+				cv.width = S; cv.height = S;
+				cv.style.cssText = 'position:absolute;z-index:200;pointer-events:none;';
+				// 画布中心对齐角色所在格的中心（tile 中心 = tile*32 + 16）
+				cv.style.left = Math.round((h.loc.x * TILE + ox + TILE / 2 - S / 2) * gs) + 'px';
+				cv.style.top = Math.round((h.loc.y * TILE + oy + TILE / 2 - S / 2) * gs) + 'px';
+				cv.style.width = Math.round(S * gs) + 'px';
+				cv.style.height = Math.round(S * gs) + 'px';
+				gd.appendChild(cv);
+				var ctx = cv.getContext('2d');
+				function hex2rgb(hex) {
+					var n = parseInt(String(hex).charAt(0) == '#' ? String(hex).substring(1) : hex, 16);
+					return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+				}
+				function rgba(c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
+				var glow = hex2rgb(opts.iconGlow || '#ffdc96');
+				var DUR = opts.duration || 1250;
+				var t0 = performance.now();
+				function tick(now) {
+					if (!cv.parentNode) return;
+					var p = Math.min((now - t0) / DUR, 1);
+					ctx.clearRect(0, 0, S, S);
+					var c = S / 2;
+					// 图标：前30%从法阵中央升起，悬停微浮，末尾淡出
+					var riseP = Math.min(1, p / 0.3);
+					var iconScale = 0.7 + 0.5 * (1 - Math.pow(1 - riseP, 3));
+					var bob = Math.sin(p * Math.PI * 2.5) * 3;
+					var rise = (1 - riseP) * 16;
+					var iconY = c - 34 - rise - bob;
+					var alpha = p < 0.8 ? 1 : Math.max(0, 1 - (p - 0.8) / 0.2);
+					var iw = 30 * iconScale;
+					// 图标背后的光晕
+					var igrad = ctx.createRadialGradient(c, iconY, 0, c, iconY, iw * 1.3);
+					igrad.addColorStop(0, rgba(glow, 0.5 * alpha));
+					igrad.addColorStop(1, rgba(glow, 0));
+					ctx.fillStyle = igrad;
+					ctx.globalAlpha = 1;
+					ctx.beginPath(); ctx.arc(c, iconY, iw * 1.3, 0, Math.PI * 2); ctx.fill();
+					ctx.globalAlpha = alpha;
+					ctx.drawImage(img, 0, ICON_H * icon, 32, 32, c - iw / 2, iconY - iw / 2, iw, iw);
+					ctx.globalAlpha = 1;
+					if (p < 1) requestAnimationFrame(tick);
+					else if (cv.parentNode) cv.parentNode.removeChild(cv);
+				}
+				requestAnimationFrame(tick);
 			};
 		// 【星冥线】战斗动画播放器 - 在角色位置播放RGM动画spritesheet
 			core.playBattleAnim = function(animId, opts) {
@@ -1147,6 +1384,18 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			} catch (e) { /* ignore */ }
 		}
 		bgmTick();
+		// 【弹幕战 BGM 恢复】danmaku 地板不在 BGM_OF 楼层分支内（bgmTick 不接管战斗 BGM），
+		// 且 lastBgmKey 防重放可能拦截同层恢复；胜利/失败/停止后按楼层规则显式恢复
+		core.plugin._restoreFloorBgm = function (fid) {
+			var b = null;
+			try { b = BGM_OF(fid || core.status.floorId); } catch (e) { b = null; }
+			if (!b || !core.material.bgms[b[0]]) return;
+			try {
+				core.playBgm(b[0]);
+				var _h = core.material.bgms[b[0]];
+				if (typeof _h.volume === 'function') _h.volume(b[1]); else _h.volume = b[1];
+			} catch (e) { /* ignore */ }
+		};
 		// 【东方星冥线】无怪物楼层显伤防崩: checkBlock子对象未初始化时补空(updateDamage读ambush会炸)
 		var _origUpdateDamage = control.prototype.updateDamage;
 		control.prototype.updateDamage = function (floorId, ctx) {
@@ -1343,7 +1592,7 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 	// 【东方星冥线】全屏裸屏: 迷你悬浮HUD(HP/魔塔能量) + 右下圆钮(道具/存档/设置)
 	(function () {
 		var SYS = 'rgba(192,224,255,0.85)', WHITE = 'rgb(255,255,255)';
-		var hudCv = null, hudCtx = null, btnCv = null, btnCtx = null, lastHp = null, scClickCv = null, darkMask = null;
+		var hudCv = null, hudCtx = null, btnCv = null, btnCtx = null, lastHp = null, scClickCv = null, nightCv = null, nightOp = 0;
 		var BR = 15;
 		var BTNS = []; // 按钮已移到底部工具栏
 		function pill(c, x, y, w, h, text, fillColor, ratio) {
@@ -1381,20 +1630,52 @@ var plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1 =
 			var p = toLocal(e);
 			btnCv.style.cursor = btnAt(p.x, p.y) >= 0 ? 'pointer' : 'default';
 		}
+		// 【星冥线】黑暗特性：黑夜层 + 主角灯光圈（复刻 植物大战魔塔 drawLight 思路：黑底 + destination-out 径向挖洞）
+		// 避免整屏黑罩导致地图完全不可见；targetOp 为目标黑度，内部平滑渐入渐出
+		function drawNight(targetOp) {
+			// 开局/读档 resetGame 会 deleteAllCanvas 清掉动态画布，闭包里的 nightCv 会变成脱离 DOM 的旧引用，
+			// 因此每帧校验画布是否仍在文档中，不在则重建
+			if (!nightCv || !nightCv.canvas || !nightCv.canvas.parentNode) {
+				core.createCanvas('night', 0, 0, core._PX_ || 416, core._PY_ || 416, 100);
+				nightCv = core.dymCanvas.night;
+				if (!nightCv) return;
+			}
+			nightOp += (targetOp - nightOp) * 0.18;
+			if (nightOp < 0.02) {
+				if (nightCv.canvas.style.display !== 'none') nightCv.canvas.style.display = 'none';
+				return;
+			}
+			nightCv.canvas.style.display = 'block';
+			var PX = core._PX_ || 416, PY = core._PY_ || 416;
+			nightCv.clearRect(0, 0, PX, PY);
+			nightCv.fillStyle = 'rgba(0,0,0,' + nightOp.toFixed(3) + ')';
+			nightCv.fillRect(0, 0, PX, PY);
+			var hero = core.status && core.status.hero;
+			if (hero && hero.loc) {
+				var ox = (core.bigmap && core.bigmap.offsetX) || 0;
+				var oy = (core.bigmap && core.bigmap.offsetY) || 0;
+				var hx = hero.loc.x * 32 + 16 - ox;
+				var hy = hero.loc.y * 32 + 16 - oy;
+				var r = 90;
+				nightCv.globalCompositeOperation = 'destination-out';
+				var grd = nightCv.createRadialGradient(hx, hy, r * 0.3, hx, hy, r);
+				grd.addColorStop(0, 'rgba(0,0,0,1)');
+				grd.addColorStop(1, 'rgba(0,0,0,0)');
+				nightCv.beginPath();
+				nightCv.fillStyle = grd;
+				nightCv.arc(hx, hy, r, 0, 2 * Math.PI);
+				nightCv.fill();
+				nightCv.globalCompositeOperation = 'source-over';
+			}
+		}
+
 		function tick() {
 			requestAnimationFrame(tick);
 			var gd = core.dom && core.dom.gameDraw;
 			if (!gd) return;
-			// 【星冥线】黑暗特性：全屏黑罩（渐入渐出）
-			if (!darkMask) {
-				darkMask = document.createElement('div');
-				darkMask.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:130;pointer-events:none;opacity:0;transition:opacity 0.5s;display:none;';
-				gd.appendChild(darkMask);
-			}
+			// 【星冥线】黑暗特性：黑夜层 + 主角灯光圈（渐入渐出）
 			var darkNow = core.getFlag('darkSteps', 0) || 0;
-			var darkOp = parseFloat(darkMask.style.opacity) || 0;
-			if ((darkNow > 0 ? 1 : 0) !== darkOp) darkMask.style.opacity = darkNow > 0 ? 1 : 0;
-			darkMask.style.display = (darkNow > 0 || darkOp > 0.01) ? 'block' : 'none';
+			drawNight(darkNow > 0 ? 0.55 : 0);
 			if (!hudCv) {
 				hudCv = document.createElement('canvas');
 				hudCv.id = 'miniHud';
@@ -5655,6 +5936,18 @@ function doAutoClean(inActions) {
 // ==================== 钩子安装 ====================
 
 function _installHooks() {
+    // --- 【星冥线】符卡（HUD 技能）回放：真实游玩时 useSpellCard 会记录 spell: 动作，
+    // 回放时消费它调用同一入口，保证位移/破墙等符卡效果可复现（此前 HUD 点击不记录 → 漂移）
+    if (core.control && core.control.registerReplayAction) {
+        core.control.registerReplayAction("spell", function (action) {
+            if (action.indexOf('spell:') != 0) return false;
+            var idx = parseInt(action.substring(6));
+            if (!idx || !core.useSpellCard) return false;
+            core.useSpellCard(idx);
+            core.replay();
+            return true;
+        });
+    }
     // --- 【星冥线】孤儿 choices 快速失败 ---
     // 升级加点(攻击/防御/生命)等 choices 动作若未被事件流消费而出现在回放主循环，
     // 说明回放状态与录像录制时不一致（旧版本录像/数据已改动），
@@ -6113,6 +6406,47 @@ var _bossBattlePluginFn = function () {
             "enemyId": "e403b",
             "name": "幽幽子",
             "attack": ["y1", "y2", "y3", "y4"],
+            // 撞 e403b 后改为进入通用弹幕战（替代原回合制符卡流程 y1~y4，
+            // 原 attack/beforeBattle/afterBattle 流程保留但不再被触发）
+            "danmaku": {
+                "enemyId": 24,                   // 【简单模式】固定站位+稀疏垂直雨+极慢瞄准弹（case 7 为困难模式，可切回）
+                "enemyImage": "char_yuyuko.png", // 幽幽子行走图（与 enemy_e403.png 同图）
+                "enemyImgW": 42,                 // 42x42 一帧（168x168 = 4x4 帧）
+                "enemyImgH": 42,
+                "enemyDrawW": 48,                // 放大到 48x48 绘制
+                "enemyDrawH": 48,
+                "spellcards": 5,                 // 手感调整：8 → 5 张符卡
+                "dynamicHp": true,               // 【2.10.57 任务A】进战时按玩家当前属性实时反推幽幽子实际 HP
+                                                 // （公式化非写死；下方静态 enemylife 32000 / cards24 卡5 60000 仅为设计基线，
+                                                 //   真实战斗由 danmaku.start 调 _calcYuyuHpModel 覆盖，见第三十八章）
+                // 【时长与掉血平衡 2.10.56·纯攻-防公式版（改版）】纯弹幕战伤害按魔塔回合制攻-防公式结算，
+                // 用户明确要求"不做任何系数/倍率修正"，K1=K2=1：
+                //   自机弹 fire = max(1, round((hero.atk − YUYU_DEF) × K1))：YUYU_DEF = e403b.def = 0、K1=1
+                //     → fire = max(1, hero.atk)（魔塔：hero.atk − enemy.def，攻高打得快；典型 f3 属性 atk=50~80 → 50~80）
+                //   敌弹 fireback = max(1, round((YUYU_ATK − hero.def) × K2))：YUYU_ATK = e403b.atk = 10、K2=1
+                //     → fireback = max(1, 10 − hero.def)（魔塔：enemy.atk − hero.def，防高打得轻；def≥10 时只掉 1 血，
+                //       属性碾压就轻松——用户要求；典型 f3 属性 def=25~40 → 1；测试存档 def=3 → 7）
+                //   时长模型（实测站桩 DPS 基线 = 20 发/秒 × fire60 = 1200（双列全中；正对单列实测 ≈ 604 ≈ 一半）；
+                //     玩家实际命中率系数取 45%（实测跟枪 42~45% 落点，取区间内偏稳值；用户预估 40~60% 内）→ 有效 DPS ≈ 540/秒）：
+                //     卡 1~4 击破符 32000/540 ≈ 59.3 秒/卡 ×4 ≈ 237 秒；卡 5 时符 60000/540 ≈ 111 秒 > 60 秒时限 →
+                //     按 60 秒超时兜底；合计 ≈ 297 秒 ≈ 4 分 57 秒（300±30 内；命中率 42%~50% 时合计 ≈ 273~320 秒，
+                //     全部落在 300±30 内；更强玩家攻高/命中更高则更快结束，符合"攻高打得快"）
+                //   掉血期望：D（回合制公式 getDamageInfo，典型 atk60/def30）= (ceil(80/60)−1)×max(10−30,0) − mdef = 0 →
+                //     当前进度属性已碾压、战斗无压力（掉血目标按 D=0 并注明；fireback=1 每发只掉 1 血）；
+                //     测试存档口径（atk3/def3/mdef8）D=174、fireback=7，正常玩 5 分钟中弹 ~10 发 → 期望 70 ≈ 0.4×D
+                //     （测试存档仅参考；真实进度 def≥10 → fireback=1、D≈0，无压力）
+                "enemylife": 32000,              // 卡 1~4 击破符血量（卡 5 时符用 cards24 里的 hp:60000，见 _refillCard）
+                get fireback() {                 // 攻-防公式（无修正系数）：中弹伤害 = max(1, YUYU_ATK − hero.def)
+                    // YUYU_ATK = e403b.atk = 10：def≥10 时只掉 1 血（属性碾压就轻松，用户要求）
+                    return Math.max(1, 10 - core.status.hero.def);
+                },
+                get fire() {                     // 攻-防公式（无修正系数）：自机火力 = max(1, hero.atk − YUYU_DEF)
+                    // YUYU_DEF = e403b.def = 0：每发伤害 = 我方攻击力（攻高打得快，魔塔逻辑）
+                    return Math.max(1, core.status.hero.atk);
+                },
+                "playersize": 2,
+                "bgm": "bgm_yuyuko.mp3"          // 幽幽子主题曲（TH07 第13曲「幽雅に咲かせ、墨染の桜」SC88Pro 版，用户提供）
+            },
             "beforeBattle": [
                 { "type": "setBlock", "number": "e403b", "loc": [7, 7] },
                 { "type": "setGlobalFlag", "name": "enableMoveDirectly", "value": false },
@@ -6221,6 +6555,16 @@ var _bossBattlePluginFn = function () {
         if (!special) return;
         if (enemyId == special.bossInfo.enemyId) {
             special.bossDamage += damage;
+            // 【星冥线】配置了 danmaku 的BOSS（幽幽子）：撞本体后进入弹幕战，
+            // 胜利回调走原有 afterBattle 剧情（喝茶对话 / g_yuyuko_follow 等）
+            if (special.bossInfo.danmaku) {
+                // 弹幕战自带血条/符卡槽，隐藏回合制 UI（overBattle 里 deleteCanvas 幂等）
+                core.deleteCanvas("specialAttack");
+                core.plugin.danmaku.start(special.bossInfo.danmaku, function () {
+                    _self.overBattle();
+                });
+                return;
+            }
             _self.changeAttack();
         } else special.attackDamage += damage;
     };
@@ -6294,6 +6638,19 @@ var _bossBattlePluginFn = function () {
         // 战后：detectBattle
         var _origAB = core.events.afterBattle;
         core.events.afterBattle = function (enemyId, x, y, force) {
+            // 【2.10.56 纯弹幕战】配置了 danmaku 的BOSS（幽幽子）：撞本体直接进弹幕战，
+            // 不执行回合制结算——原 afterBattle 的扣血/判死/金币经验/死怪计数全部跳过
+            // （进战前/后 hp 不变，掉血只发生在弹幕战中弹）；仅等价地清掉地图上的 BOSS 块，
+            // 与回合制战后删除一致（避免胜利回城后原地再撞 e403b）。
+            var _spAB = core.getFlag('specialAttack');
+            if (_spAB && _spAB.bossInfo && _spAB.bossInfo.enemyId == enemyId && _spAB.bossInfo.danmaku) {
+                try {
+                    if (x != null && y != null && core.getBlock(x, y) != null) core.removeBlock(x, y);
+                    core.updateStatusBar();
+                    core.plugin.detectBattle(enemyId, 0);
+                } catch (e) { console.error('【BOSS战】detectBattle:', e); }
+                return undefined;
+            }
             var res;
             if (_origAB) res = _origAB.call(this, enemyId, x, y, force);
             try {
@@ -6335,3 +6692,1178 @@ var _bossBattlePluginFn = function () {
 };
 
 _bossBattlePluginFn();
+
+// ===== 【东方星冥线】通用弹幕战斗系统（移植自 魔塔弹幕风 MT0）=====
+// 核心循环见 project/floors/danmaku.js 的 parallelDo（子弹移动、绘制、自机射击、
+// 敌机AI switch case 0~23、圆形碰撞、血条/符卡槽、胜利/失败判定，全部原样保留）。
+// 用法：core.plugin.danmaku.start(config)
+// config 最少需要 enemyId / enemylife / spellcards；可选 enemyImage、fire、fireback、
+// bgm、onWin、onLose、playersize、ispeed 等，均有默认值。
+var _danmakuPluginFn = function () {
+    if (typeof core === 'undefined') {
+        plugins_bb40132b_638b_4a9f_b028_d3fe47acc8d1["danmaku"] = _danmakuPluginFn;
+        return;
+    }
+    var _self = this;
+
+    // 战斗区域边界（第六轮·放大铺满）：原战斗区 0~224 x 0~352（占 480x480 画布 47%宽 x 73%高，位于左上角）。
+    // 放大方案（用户要求：接近全屏、移动范围大）：非等比拉伸铺满——
+    //   SX = 480/224 ≈ 2.1429（X 满宽 0~480）；
+    //   SY = 448/352 ≈ 1.2727，且战斗区顶部偏移 FIELD_Y=16px（画布上下各留 16px，战斗区 y∈[16,464]，占高 93.3%）；
+    // 所有坐标 X'=X*SX、Y'=FIELD_Y+Y*SY；速度/判定半径/子弹视觉尺寸不换算（区域变大天然更稀疏，更好躲）。
+    var SX = 480 / 224;              // ≈2.1429
+    var SY = 448 / 352;              // ≈1.2727
+    var FIELD_W = 480;               // 原 224 → 新战斗区宽（满画布宽）
+    var FIELD_H = 448;               // 原 352 → 新战斗区高
+    var FIELD_Y = 16;                // 战斗区顶部在画布中的 y 偏移（顶部/底部各留 16px）
+    // 第四轮（触屏边界手感）：自机 40x40 绘制半宽=20（parallelDo drawImage 偏移 playerx-20/playery-20），
+    // 钳制含半身 → 自机整身不出新战斗区（铺满画布、不出屏）：x∈[20,460]、y∈[36,444]
+    //（y 下界 36=FIELD_Y+20，自机不会盖住战斗区顶部的血条/符卡 UI 条）
+    var MOVE_MIN = 20;
+    var MOVE_MIN_Y = FIELD_Y + 20;   // 36
+    var MOVE_MAX_X = FIELD_W - 20;   // 460
+    var MOVE_MAX_Y = FIELD_Y + FIELD_H - 20; // 444
+
+    this.danmaku = {};
+
+    // 音效助手：开关（flags.sfx）+ 回放静音（core.isReplaying）+ 同名音最小间隔（Date.now，防爆音）+ 兜底 try/catch
+    this.danmaku._sfx = function (name, opts) {
+        if (!flags.sfx || core.isReplaying()) return;
+        var o = opts || {};
+        var gap = o.gap || 0;
+        var last = flags.sfxLast || {};
+        if (gap && Date.now() - (last[name] || 0) < gap) return;
+        last[name] = Date.now();
+        flags.sfxLast = last;
+        try {
+            core.playSound(name);
+        } catch (e) {
+            console.error('danmaku sfx ' + name, e);
+        }
+    };
+
+    // 微调轮：音效响度均衡（仅衰减不放大，避免削波；就地缩放已解码 AudioBuffer 采样，
+    // 不修改 wav 文件、不改 libs/、不改 core.playSound 调用链；__danmakuGain 幂等标记防二次缩放）
+    this.danmaku._applySfxGain = function () {
+        var gains = { 'danmaku_damage': 0.4, 'danmaku_declare': 0.7 }; // 其余 1.0 不动
+        for (var name in gains) {
+            // 运行时 material.sounds 键带文件后缀（loader 按 data.js sounds 列表原样装载，如 'danmaku_damage.wav'），
+            // 而 _sfx 调用名无后缀——两种键形都兼容，保证缩放真实命中已解码 AudioBuffer。
+            var buf = core.material && core.material.sounds &&
+                (core.material.sounds[name] || core.material.sounds[name + '.wav']);
+            if (buf && buf.getChannelData && !buf.__danmakuGain) {
+                for (var c = 0; c < buf.numberOfChannels; c++) {
+                    var d = buf.getChannelData(c);
+                    for (var i = 0; i < d.length; i++) d[i] *= gains[name];
+                }
+                buf.__danmakuGain = true;
+            }
+        }
+    };
+
+    // 【2.10.57 任务A·幽幽子战 HP 动态调整模型】进战时按玩家当前属性实时反推 BOSS 实际 HP（公式化，非写死）：
+    //   掉血目标 D = 魔塔回合制公式伤害（e403b 手册值 hp80/atk10/def0、special:[] 无折射/吸血/先攻/破甲/
+    //     净化/反击/支援等 → 纯攻-防公式，与 project/functions.js getDamageInfo 同口径，测试双口径核对）：
+    //     per_damage = max(0, 10 − def)；hero_per_damage = max(atk − 0, 0)；turn = ceil(80 / hero_per_damage)；
+    //     D = max(0, (turn − 1) × per_damage − mdef)
+    //   掉血模型：总掉血 = 战斗时长 × 中弹频率 × fireback；中弹频率按魔塔玩家不熟练预估 20~40 秒一弹，
+    //     取中值 30 秒（与第三十七章真实跟枪实测自然中弹 ~10 次/5 分钟 ≈ 30 秒/次吻合）→
+    //     反推战斗时长 T = D ÷ (中弹频率 × fireback)，夹取保护：下限 180 秒（BGM 体验）、上限 360 秒；
+    //   总 HP = 有效DPS × T，有效DPS = 20发/秒 × fire × 命中率45%（第三十七章站桩实测基线 20发/秒，
+    //     命中率实测 42~47% 取中值 45%）→ effDPS = 20 × fire × 0.45 = 9 × fire；
+    //   每卡分配：卡 1~4 击破符均分（hpBreak）+ 卡 5 时符 60 秒兜底（血量 = min(60000, effDPS×60)，
+    //     不高于 60000 基线；攻极高时可在时限前击破，总时长由"总HP预算 − 时符实际占用"自洽兜住）；
+    //   边界：D=0（属性碾压）或 D ≥ 玩家 HP（属性不足按魔塔原则打不过）或不可战斗 → 按 5 分钟基线时长
+    //     T0 = 297s（第三十七章模型中心 = 4×59.3 + 60）反推 HP：典型 atk60/def30 → 卡1~4 ≈31995≈32000、
+    //     卡5 = 60000（与上轮基线一致）；更高 atk 时卡血同比上调以保持 5 分钟时长（若沿用固定 32000/60000，
+    //     atk=120 实测仅 ~174s < 180s 下限，违反总时长约束）；属性不足时掉血会高（D 大）但这是玩家属性
+    //     问题，不调数值。返回值含诊断字段（进战落盘到 flags.yuyuHpModel，供测试断言，不影响判定/回放）。
+    this.danmaku._calcYuyuHpModel = function (fire, fireback) {
+        var hero = core.status.hero || {};
+        var atk = Math.max(0, hero.atk || 0);
+        var def = Math.max(0, hero.def || 0);
+        var mdef = Math.max(0, hero.mdef || 0);
+        var heroHp = Math.max(0, hero.hp || 0);
+        // 回合制伤害 D（e403b 口径，见上注释）
+        var perDamage = Math.max(0, 10 - def);          // mon_atk(10) − hero_def
+        var heroPerDamage = Math.max(atk, 0);           // hero_atk − mon_def(0)
+        var D = 0;
+        var unbeatable = heroPerDamage <= 0;            // atk=0 时 hero_per_damage≤0 → getDamageInfo 返回 null 不可战斗
+        if (!unbeatable) {
+            var turn = Math.ceil(80 / heroPerDamage);   // mon_hp(80) ÷ hero_per_damage 向上取整
+            D = Math.max(0, (turn - 1) * perDamage - mdef);
+        }
+        var effDPS = 20 * fire * 0.45;                  // 20发/秒 × fire × 命中率45%
+        var hitInterval = 30;                           // 中弹频率：1 弹 / 30 秒（20~40 秒预估取中值）
+        var T0 = 297;                                   // 5 分钟基线时长（秒）= 4×59.3 + 60
+        var branch, T, hpCard5;
+        if (unbeatable || D <= 0 || D >= heroHp) {
+            // D=0（属性碾压）/ D ≥ 玩家HP（属性不足）/ 不可战斗 → 5 分钟基线时长反推（不调数值）
+            branch = (unbeatable || D >= heroHp) ? 'underpowered' : 'baseline';
+            T = T0;
+            hpCard5 = 60000;
+        } else {
+            // 动态分支：T = D ÷ (中弹频率 × fireback)，夹取 180~360 秒
+            branch = 'dynamic';
+            T = Math.max(180, Math.min(360, D / (1 / hitInterval) / fireback));
+            hpCard5 = Math.min(60000, Math.round(effDPS * 60));
+        }
+        var T5 = Math.min(60, hpCard5 / effDPS);        // 时符实际占用时长（血高时仍按 60 秒超时兜底）
+        var hpBreak = Math.max(1, Math.round(effDPS * (T - T5) / 4)); // 卡 1~4 击破符均分
+        return {
+            branch: branch,
+            D: D, T: T, T5: T5,
+            effDPS: Math.round(effDPS * 100) / 100,
+            hpBreak: hpBreak, hpCard5: hpCard5,
+            fire: fire, fireback: fireback,
+            hero: { atk: atk, def: def, mdef: mdef, hp: heroHp }
+        };
+    };
+
+    // ---------------- 开始弹幕战 ----------------
+    this.danmaku.start = function (config, onWin) {
+        if (!config) return;
+        if (flags.bulletscreen) return; // 已在弹幕战中
+        // 浅拷贝配置（不依赖 core.clone）
+        var cfg = {};
+        for (var k in config) cfg[k] = config[k];
+        // 兼容两种调用方式：config.onWin 或第二参数
+        if (cfg.onWin == null && onWin != null) cfg.onWin = onWin;
+        _self._cfg = cfg;
+        // 默认值
+        var enemyId = cfg.enemyId != null ? cfg.enemyId : 0;
+        var enemylife = cfg.enemylife != null ? cfg.enemylife : 100;
+        var spellcards = cfg.spellcards != null ? cfg.spellcards : 1;
+        var fire = cfg.fire != null ? cfg.fire : core.status.hero.atk;
+        var fireback = cfg.fireback != null ? cfg.fireback : 10;
+        var playersize = cfg.playersize != null ? cfg.playersize : 2;
+        var ispeed = cfg.ispeed != null ? cfg.ispeed : 3; // 键盘方向键速度固定 3px/帧（第四十七章：按用户反馈由 5px 降为 3px，更好躲弹；触摸拖动为 1:1 位移，不使用 ispeed）
+        // 【2.10.57 任务A·幽幽子战HP动态调整】配置了 dynamicHp 的幽幽子（enemyId 24）进战时按玩家当前
+        // 属性实时反推 BOSS 实际 HP（见 _calcYuyuHpModel 注释）；静态 enemylife（32000）仅作设计基线，
+        // 真实战斗血量由模型覆盖；回放期间自动判胜不计算（不影响路线一致性）
+        var _yuyuHpModel = null;
+        if (cfg.dynamicHp && cfg.enemyId == 24 && !core.isReplaying()) {
+            _yuyuHpModel = _self.danmaku._calcYuyuHpModel(fire, fireback);
+            enemylife = _yuyuHpModel.hpBreak; // 卡 1~4 击破符均分血量（卡 1 初始血量）
+        }
+        // 记录战斗前位置（胜利后返回）
+        flags.px = core.status.hero.loc.x;
+        flags.py = core.status.hero.loc.y;
+        flags.pfloor = core.status.floorId;
+        // 初始化弹幕数组（敌弹上限100，自机弹上限10）
+        flags.bullet = [];
+        flags.bulletx = [];
+        flags.bullety = [];
+        flags.bulletx1 = [];
+        flags.bullety1 = [];
+        flags.bulletsize = [];
+        flags.bullettype = [];
+        flags.bulletframe = [];
+        flags.bullettypeid = [];
+        flags.bulletwob = [];
+        flags.bulletcolor = [];
+        flags.selfbullet = [];
+        flags.selfbulletx = [];
+        flags.selfbullety = [];
+        for (var i = 0; i < 100; i++) {
+            flags.bullet[i] = 0;
+            flags.bulletx[i] = 0;
+            flags.bullety[i] = 0;
+            flags.bulletx1[i] = 0;
+            flags.bullety1[i] = 0;
+            flags.bulletsize[i] = 0;
+            flags.bullettype[i] = 0;
+            flags.bulletframe[i] = 0;
+            flags.bullettypeid[i] = 0;
+            flags.bulletwob[i] = null;
+            flags.bulletcolor[i] = 0;
+        }
+        for (var j = 0; j < 10; j++) {
+            flags.selfbullet[j] = 0;
+            flags.selfbulletx[j] = 0;
+            flags.selfbullety[j] = 0;
+        }
+        // 战斗参数
+        // 第六轮：出生点按放大换算——自机（下方中央，更好躲）、敌机（上方中央）
+        flags.playerx = 112 * SX;                    // 240 = 112*SX
+        flags.playery = FIELD_Y + 320 * SY;          // ≈423.3 = 16 + 320*SY
+        flags.enemyx = 112 * SX;                     // 240 = 112*SX
+        flags.enemyy = FIELD_Y + 48 * SY;            // ≈77.1 = 16 + 48*SY
+        flags.time = 0;
+        flags.onhit = 0;
+        // 第四十四章：每战复位单调帧计数与扩散弹登记（spiral 每战从 angle0 起、burst 无残留；
+        // 只写 flags，不影响判定/擦弹/回放——回放自动判胜跳过生成）
+        flags.danmakuCycle = 0;
+        flags.lastTick = undefined;
+        flags.burst = [];
+        // 幽幽子目标点随机游走状态（进战重置为 null，case 24 首帧惰性初始化；只写 flags，不影响判定/回放）
+        flags.wanderTx = null;
+        flags.wanderTy = null;
+        flags.wanderTimer = null;
+        // 阶段二：符卡每卡时限计时器、弹幕生成空槽接续游标、破卡提示（只写 flags，不影响判定与回放）
+        flags.cardTimer = 0;
+        flags.n = 0;
+        flags.cardBreakFx = null;
+        // 中弹全屏闪红计数器（纯视觉：命中置 5，每帧绘制后自减；不影响判定与回放）
+        flags.hitFlash = 0;
+        // 第四轮：符卡宣言文字（纯视觉 {text, life}）、破卡大闪光计数器（纯视觉）、BOSS 登场下滑帧数（纯视觉计数器）
+        flags.cardNameFx = null;
+        flags.breakFlash = 0;
+        flags.enterFx = 45;
+        // 第十一轮：幽幽子旋转光环状态（纯视觉 {life, angle, timer}，进战初始化、战斗结束清理；只写 flags，不影响判定与回放）
+        flags.auraFx = { life: 0, angle: 0, timer: 0 };
+        // 第五轮（弹幕节奏）：高血段标记（enemylife*2 > enemylifemax 为高血段；破卡回满血时复位）+ 低血段停火提示计数器（纯视觉 + 生成暂停）
+        flags.highPhase = 1;
+        flags.ceaseFx = null;
+        // 音效开关与宣言去重游标（flags.sfx 默认开，后续 UI 可置 0；sfxLast 为 Date.now 时间戳表，防同名爆音）
+        flags.sfx = 1;
+        flags.lastCardIdx = -1;
+        flags.sfxLast = {};
+        // 微调轮：进战即做一次音效响度均衡（幂等：__danmakuGain 标记防二次缩放，重复进战无副作用）
+        _self.danmaku._applySfxGain();
+        // 阶段一：敌弹判定分档系数表（参考 Touhou.js：小弹 75% / 中弹 50% / 大弹 44%，默认 0.5）
+        flags.hitk = { 3: 0.75, 6: 0.5, 14: 0.44 };
+        // 擦弹计数与每弹去重标记（只写 flags，不写 route/输入，不影响回放）
+        flags.graze = 0;
+        flags.grazed = [];
+        // 命中/擦弹视觉特效（纯视觉数组 {x,y,type,life}，上限约 20，不影响判定与回放）
+        flags.fx = [];
+        for (var g = 0; g < 100; g++) flags.grazed[g] = 0;
+        flags.enemylife = enemylife;
+        flags.enemylifemax = enemylife;
+        flags.fire = fire;
+        flags.fireback = fireback;
+        flags.spellcardleft = spellcards;
+        // 【2.10.57 动态HP】每卡血量覆盖表（卡 1~4 均分 + 卡 5 时符兜底血量，_refillCard 优先读它；
+        // 只写 flags，不影响判定/回放；cards7/无 dynamicHp 时不存在该字段，行为与旧版一致）
+        // 模型诊断信息一并落盘（供测试断言 / 交付说明核对，战斗逻辑不读取）
+        if (_yuyuHpModel) {
+            flags.cardHpOverride = [_yuyuHpModel.hpBreak, _yuyuHpModel.hpBreak, _yuyuHpModel.hpBreak, _yuyuHpModel.hpBreak, _yuyuHpModel.hpCard5];
+            flags.yuyuHpModel = _yuyuHpModel;
+        }
+        flags.enemyId = enemyId;
+        flags.playersize = playersize;
+        flags.ispeed = ispeed;
+        // 【2.10.65 任务三】配色主题化初始化：cards24 每卡 colorOffset（0~3，4 色循环起始偏移）
+        // 由 _refillCard 破卡时更新；cards7/其他敌人 colorWaveOff=undefined → 生成器不配色，
+        // 弹色与旧版逐字节一致（bulletcolor 全 0）。
+        // 【2.10.65 任务一】键盘方向标志初始化为全 0（parallelDo 每帧读取做持续移动）。
+        var _c0 = (enemyId == 24 && _self.danmaku.cards24 && _self.danmaku.cards24[0])
+            ? _self.danmaku.cards24[0].colorOffset : null;
+        flags.colorOffset = (_c0 == null ? 0 : ((_c0 % 4) + 4) % 4);
+        flags.colorWave = 0;
+        flags.colorWaveOff = (enemyId == 24 ? flags.colorOffset : undefined);
+        flags.danmakuKey = { left: 0, right: 0, up: 0, down: 0 };
+        // 【2.10.66 任务一】樱花点缀初始化（纯视觉：只写 flags、不写 route，回放安全）。
+        // 每战固定 6 朵（稀疏、正作感）；位置/下落速度/摆动相位/飘移全部由序号推导，
+        // 不用 core.rand → 不消耗随机种子，不影响生成器/随机游走的确定性序列（见第四十七章实测）。
+        // parallelDo 每帧按 vy 下落 + 正弦摆动绘制，出界（y>520）回到顶部（y=-32）。
+        flags.sakura = [];
+        for (var _sk = 0; _sk < 6; _sk++) {
+            flags.sakura.push({
+                x: (_sk * 83 + 31) % 480,
+                y: (_sk * 131) % 520 - 40,
+                vy: 0.3 + ((_sk * 13) % 3) * 0.1,        // 0.3/0.4/0.5 px/帧
+                img: _sk % 3,                             // sakura_petal0..2
+                size: 36 + ((_sk * 7) % 3) * 8,           // 36/44/52 px（明显可见：用户反馈小尺寸低 alpha 看不见 → 素材 alpha<=160+粉色增强，绘制 36/44/52px）
+                ph: (_sk * 41) % 360,                     // 摆动相位
+                drift: (_sk % 2 ? 1 : -1) * (0.08 + (_sk % 3) * 0.04) // 斜向漂移 ±0.08~0.16
+            });
+        }
+        // 敌机形象（独立图或 enemys.png 帧；不配置则用 enemys.png 的 enemyId 行）
+        flags.enemyImage = cfg.enemyImage || null;
+        flags.enemyImgX = cfg.enemyImgX || 0;
+        flags.enemyImgY = cfg.enemyImgY || 0;
+        flags.enemyImgW = cfg.enemyImgW || 32;
+        flags.enemyImgH = cfg.enemyImgH || 32;
+        flags.enemyDrawW = cfg.enemyDrawW || 32;
+        flags.enemyDrawH = cfg.enemyDrawH || 32;
+        // 注册移动控制（战斗结束即注销，避免残留监听）
+        _self._registerMove();
+        // 隐藏普通主角行走图（弹幕战用 event2 自绘妖梦）
+        core.setHeroOpacity(0);
+        // 开战
+        flags.bulletscreen = 1;
+        if (core.isReplaying()) {
+            // 回放兼容：回放期间没有真实玩家输入（keyDown 被 _sys_checkReplay 拦截），
+            // 直接判定胜利，下一帧 danmaku 地板的 parallelDo 会走胜利分支回城。
+            // 弹幕战期间 normal play 只调用 core.rand（不写录像路线），回放跳过也不影响路线一致性。
+            flags.enemylife = 0;
+            flags.spellcardleft = 0;
+            // 回放静音：回放期弹幕战自动判胜，任何 SE 都不该响。
+            // 注意 parallelDo 真正执行判胜帧时 core.isReplaying() 可能已因路线耗尽而变 false，
+            // 因此不能只靠 _sfx 里的 isReplaying 检查，这里直接关掉 _sfx 开关；
+            // 战斗立即结束，且下一次 danmaku.start 会重新置 flags.sfx = 1。
+            flags.sfx = 0;
+        }
+        // BGM（可空，沿用当前音乐；有 cfg.bgm 时仅传名称参数，与其它播放调用一致）。
+        // 在换入 danmaku 地板的 changeFloor 回调里播（换层钩子会先按楼层规则播楼层曲，
+        // 若在换层前播，bgmTick 会因 lastBgmKey 过期在 f3_12 末帧把战斗 BGM 盖回楼层曲）
+        core.insertAction({ "type": "changeFloor", "floorId": "danmaku", "loc": [14, 14], "time": 0 }, null, null, function () {
+            if (cfg.bgm) {
+                core.playBgm(cfg.bgm);
+                // 音量：对齐 f3_ 楼层 BGM 档位 0.4（bgmTick 不接管 danmaku 地板音量，与进入前 f3_12 楼层曲同档）
+                var _b = core.material.bgms[cfg.bgm];
+                try { if (_b) { if (typeof _b.volume === 'function') _b.volume(0.4); else _b.volume = 0.4; } } catch (e) { /* ignore */ }
+            }
+        });
+    };
+
+    // ---------------- 阶段二：弹幕生成参数化助手（数据层，直接操作 flags.bullet 数组找空槽并写参数） ----------------
+    // 参考 th06_3.1 声明式弹幕数组 / Touhou.js shoot_circle：生成器只负责"找空槽 + 写参数"，
+    // 与 parallelDo 原手写 for 块同款"接续搜索"（从 n 起找第一个空槽，n 接续推进，避免覆盖已有子弹）。
+    // 每个生成器签名 (flags, cx, cy, opts)：cx/cy 为生成锚点（数字或 flags 字段名如 'enemyx'），
+    // opts 公共字段：count/speed/size/type/interval/offset/resetN/advanceN 等（详见各生成器注释）。
+    var _val = function (v, flags) {
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') return flags[v];
+        if (typeof v === 'function') return v(flags);
+        return v;
+    };
+    // 弹型 ID 兜底：未配 typeid 时按旧三档映射（3→小玉 / 6→丸弹 / 14→大玉），保证旧生成器/旧 AI case 视觉不变
+    var _typeidFor = function (size) {
+        return size == 3 ? 'small' : (size == 6 ? 'maru' : (size == 14 ? 'big' : 'small'));
+    };
+    // 找空槽写入（返回接续 n；找不到空槽则跳过不放，与原 for 循环行为一致）
+    // 第四十六章：新增可选 color 参数（0~3 弹色帧偏移；null/未传=不配色，弹色帧与旧版一致）。
+    // 只写 flags.bulletcolor[i]（纯视觉，绘制时叠加在 bulletframe 上），判定/尺寸/回放不受影响。
+    var _place = function (flags, n, x, y, vx, vy, size, type, advance, typeid, color) {
+        for (var i = n; i < 100; i++) {
+            if (flags.bullet[i] == 0) {
+                flags.bullet[i] = 1;
+                flags.bulletx[i] = x;
+                flags.bullety[i] = y;
+                flags.bulletx1[i] = vx;
+                flags.bullety1[i] = vy;
+                flags.bulletsize[i] = size;
+                flags.bullettype[i] = type;
+                flags.bullettypeid[i] = typeid != null ? typeid : _typeidFor(size);
+                flags.bulletwob[i] = null;
+                flags.bulletcolor[i] = color != null ? ((color % 4) + 4) % 4 : 0;
+                return advance !== false ? i + 1 : n;
+            }
+        }
+        return n;
+    };
+    // 第四十六章：同波多色交替——每颗弹的弹色帧偏移 = (波内序号 j + 当前波起始偏移) % 4；
+    // cards24 每波由 _tickCard 写 flags.colorWaveOff（卡 1~4 固定、卡 5 colorAlt 逐波交替），
+    // cards7/其他场景 colorWaveOff 为 undefined → 返回 null（不配色，弹色与旧版一致）。
+    var _bulletColor = function (j) {
+        return flags.colorWaveOff != null ? (j + flags.colorWaveOff) % 4 : null;
+    };
+    this.danmaku.spawn = {
+        // 环形（参考 Touhou.js shoot_circle）：count 颗均布整圆，speed 为线速度（px/帧），
+        // angle0 起角（0 = 正右，屏幕 y 向下）、angleSpan 张角（默认整圆 2π）
+        ring: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var count = o.count != null ? o.count : 8;
+            var speed = o.speed != null ? o.speed : 2;
+            var a0 = o.angle0 != null ? o.angle0 : 0;
+            var span = o.angleSpan != null ? o.angleSpan : Math.PI * 2;
+            var x = _val(cx, flags) + (o.x0 || 0);
+            var y = _val(cy, flags) + (o.y0 || 0);
+            var n = o.resetN === false ? flags.n : 0;
+            for (var j = 0; j < count; j++) {
+                var a = a0 + span * j / count;
+                n = _place(flags, n, x, y, speed * Math.cos(a), speed * Math.sin(a), o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(j));
+            }
+            flags.n = n;
+        },
+        // 扇形：count 颗按 dirs 方向族逐 j 交错发射（保持原手写块的下/上/右/左族插槽顺序）；
+        // spread = spread0 + j*spreadStep；配 spreadTimeDiv/spreadTimeBase 时为旋转扫射 spread = (time%100)/div - base
+        // 第四十三章（弹幕布局调整·自机狙扇形）：opts.aim=true 时改用"以玩家方向为基准角 + spread 角偏移"的
+        //   自机狙扇形（Danmakufu SampleA02 / taisei crystal_rain 式，atan2 玩家-发射点 为基准）：
+        //   每颗弹速度统一取 opts.speed（低难度 ≤2px/帧），vx/vy = speed*cos/sin(基准角+spread)；
+        //   spread0/spreadStep 在此分支语义为弧度角偏移（与普通扇形的 vx 速度偏移不同，见数据表注释）。
+        //   评估结论：采用"偶数向 + 对称 spread"——玩家方向正好落在两股之间（中间一发不正对玩家），
+        //   既保留自机狙追位手感，又不破坏 BOSS 正下方中央列安全（奇数向会让中间一发周期性直射站桩玩家，弃用，依据见第四十三章）。
+        fan: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var count = o.count != null ? o.count : 5;
+            var dirs = o.dirs != null ? o.dirs : [{ vx: 'spread', vy: o.vy != null ? o.vy : 2 }];
+            var x = _val(cx, flags) + (o.x0 || 0);
+            var y = _val(cy, flags) + (o.y0 || 0);
+            var n = o.resetN === false ? flags.n : 0;
+            if (o.aim) {
+                var spd = o.speed != null ? o.speed : 1.2;
+                var base = Math.atan2(flags.playery - y, flags.playerx - x);
+                for (var j = 0; j < count; j++) {
+                    var a = base + (o.spread0 != null ? o.spread0 : 0) + j * (o.spreadStep != null ? o.spreadStep : 0);
+                    n = _place(flags, n, x, y, spd * Math.cos(a), spd * Math.sin(a), o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(j));
+                }
+                flags.n = n;
+                return;
+            }
+            for (var j = 0; j < count; j++) {
+                var s = o.spreadTimeDiv != null
+                    ? (flags.time % 100) / o.spreadTimeDiv - (o.spreadTimeBase != null ? o.spreadTimeBase : 0)
+                    : (o.spread0 != null ? o.spread0 : 0) + j * (o.spreadStep != null ? o.spreadStep : 0);
+                for (var d = 0; d < dirs.length; d++) {
+                    var dir = dirs[d];
+                    var vx = dir.vx === 'spread' ? s : (dir.vx === '-spread' ? -s : dir.vx);
+                    var vy = dir.vy === 'spread' ? s : (dir.vy === '-spread' ? -s : dir.vy);
+                    n = _place(flags, n, x, y, vx, vy, o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(j * dirs.length + d));
+                }
+            }
+            flags.n = n;
+        },
+        // 自机狙：opts 不配 vx/vy（direction=null 语义）时朝玩家；speed = 弹飞到玩家所需帧数，vx=(playerx-cx)/speed
+        aimed: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var x = _val(cx, flags) + (o.x0 || 0);
+            var y = _val(cy, flags) + (o.y0 || 0);
+            var k = o.speed != null ? o.speed : 100;
+            var n = o.resetN === false ? flags.n : 0;
+            n = _place(flags, n, x, y, (flags.playerx - x) / k, (flags.playery - y) / k, o.size != null ? o.size : 6, o.type != null ? o.type : 1, o.advanceN !== false, o.typeid, _bulletColor(0));
+            flags.n = n;
+        },
+        // 直线雨（一列等距弹，可带随机散布）：x = cx + x0 + j*spacing + rand(jx)，y = cy + y0 + rand(jy)
+        // 第六轮：x0/spacing/y0 已由数据表按 SX/SY 换算为新战斗区坐标；jx/jy 抖动在此按 SX/SY
+        // floor 换算（与旧版 rand 调用流完全一致，X'=X*SX 偏差<1px，便于逐帧核对换算一致性）
+        line: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var count = o.count != null ? o.count : 1;
+            var x0 = _val(cx, flags);
+            var y0 = _val(cy, flags);
+            var n = o.resetN === false ? flags.n : 0;
+            for (var j = 0; j < count; j++) {
+                var x = x0 + (o.x0 || 0) + j * (o.spacing || 0) + (o.jx ? Math.floor(core.rand(o.jx) * SX) : 0);
+                var y = y0 + (o.y0 || 0) + (o.jy ? Math.floor(core.rand(o.jy) * SY) : 0);
+                n = _place(flags, n, x, y, o.vx != null ? o.vx : 0, o.vy != null ? o.vy : 2, o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(j));
+            }
+            flags.n = n;
+        },
+        // 随机散布（参考 MT0 case 8 的 rand(16)/4 风格速度箱）：vx∈[vxMin..vxMax]、vy∈[vyMin..vyMax]，0.25 步进
+        rain: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var count = o.count != null ? o.count : 1;
+            var x = _val(cx, flags) + (o.x0 || 0);
+            var y = _val(cy, flags) + (o.y0 || 0);
+            var n = o.resetN === false ? flags.n : 0;
+            var vxMin = o.vxMin != null ? o.vxMin : -2, vxMax = o.vxMax != null ? o.vxMax : 2;
+            var vyMin = o.vyMin != null ? o.vyMin : 1, vyMax = o.vyMax != null ? o.vyMax : 3;
+            var vxSteps = Math.max(1, Math.round((vxMax - vxMin) * 4 + 1));
+            var vySteps = Math.max(1, Math.round((vyMax - vyMin) * 4 + 1));
+            for (var j = 0; j < count; j++) {
+                var vx = vxMin + core.rand(vxSteps) / 4;
+                var vy = vyMin + core.rand(vySteps) / 4;
+                n = _place(flags, n, x, y, vx, vy, o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(j));
+            }
+            flags.n = n;
+        },
+        // 旋转环（鳞弹旋转用）：与 ring 同构，但 angle0 随时间匀速旋转（spinSpeed 弧度/帧），形成旋转针轮；
+        // 速度仍为匀速直线（speed ≤ 2 时低难度），轨迹旋转体现在每波环的朝向逐波偏移
+        spin: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var count = o.count != null ? o.count : 6;
+            var speed = o.speed != null ? o.speed : 1.2;
+            var a0 = o.angle0 != null ? o.angle0 : 0;
+            var spinSpeed = o.spinSpeed != null ? o.spinSpeed : 0.008;
+            var x = _val(cx, flags) + (o.x0 || 0);
+            var y = _val(cy, flags) + (o.y0 || 0);
+            var n = o.resetN === false ? flags.n : 0;
+            var aBase = a0 + flags.time * spinSpeed;
+            for (var j = 0; j < count; j++) {
+                var a = aBase + Math.PI * 2 * j / count;
+                n = _place(flags, n, x, y, speed * Math.cos(a), speed * Math.sin(a), o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(j));
+            }
+            flags.n = n;
+        },
+        // 波浪（环弹波浪用）：一行慢速下落 + x 方向正弦摆动（每弹记录 wob 描述，移动循环按帧更新速度；纯移动，不影响判定/回放）
+        wave: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var count = o.count != null ? o.count : 4;
+            var x0 = _val(cx, flags);
+            var y0 = _val(cy, flags);
+            var speed = o.speed != null ? o.speed : 1;
+            var amp = o.amp != null ? o.amp : 10;
+            var freq = o.freq != null ? o.freq : 0.02;
+            var n = o.resetN === false ? flags.n : 0;
+            for (var j = 0; j < count; j++) {
+                var x = x0 + (o.x0 || 0) + j * (o.spacing || 0);
+                var y = y0 + (o.y0 || 0) + (o.jy ? Math.floor(core.rand(o.jy) * SY) : 0);
+                var n2 = _place(flags, n, x, y, 0, speed, o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(j));
+                if (n2 > n) flags.bulletwob[n2 - 1] = { ax: 0, ay: speed, amp: amp, fq: freq, ph: j * (o.phaseStep != null ? o.phaseStep : 0.5) };
+                n = n2;
+            }
+            flags.n = n;
+        },
+        // 随机散射（第四十四章新增；taisei rng_dir / Danmakufu ExRumiaSpell01 rand 式）：
+        // 极坐标随机——每颗弹随机方向 a = angle0 + rand*angleSpan（0=正右，屏幕 y 向下），
+        // 随机速度 speed = speedMin + rand*(speedMax-speedMin)（0.01 步进，默认 1~2px/帧）；
+        // 全部只用 core.rand（LCG 确定性种子，不写 route）——回放自动判胜跳过不受影响；
+        // downCone（弧度，默认 0）：排除"正下方 ±downCone"圆锥角带（如 downCone=π/6 排除垂直下落 ±30°）。
+        //   依据（第四十四章实测）：BOSS 固定居中（enemyx=240）时，能穿过中央列 [200,280]（弹体中心）
+        //   的散射角度恰为垂直 ±~10°（|dx|≤40 / dy=223），30° 锥带完全覆盖并留余量——散射本身
+        //   对中央列安全零贡献；游离到屏幕边缘的 BOSS 发射的斜向散射仍可能偶发穿过中央列
+        //   （用户容错设计下可接受部分随机性），实测逐卡中央列通过数 ≤ 两侧 50% 仍满足（见第四十四章）。
+        scatter: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var count = o.count != null ? o.count : 4;
+            var x = _val(cx, flags) + (o.x0 || 0);
+            var y = _val(cy, flags) + (o.y0 || 0);
+            var n = o.resetN === false ? flags.n : 0;
+            var speedMin = o.speedMin != null ? o.speedMin : 1;
+            var speedMax = o.speedMax != null ? o.speedMax : 2;
+            var angle0 = o.angle0 != null ? o.angle0 : 0;
+            var span = o.angleSpan != null ? o.angleSpan : Math.PI * 2;
+            var cone = o.downCone != null ? o.downCone : 0;
+            var speedSteps = Math.max(1, Math.round((speedMax - speedMin) * 100) + 1);
+            var spanSteps = Math.max(1, Math.round(span * 10000) + 1);
+            for (var j = 0; j < count; j++) {
+                var a = 0;
+                // 有界重试（最多 32 次；重试次数由 core.rand 种子决定，确定性不变）
+                for (var k = 0; k < 32; k++) {
+                    a = angle0 + core.rand(spanSteps) / 10000;
+                    if (cone <= 0) break;
+                    var d = Math.abs(a - Math.PI / 2);
+                    if (d > cone && d < Math.PI * 2 - cone) break;
+                }
+                var sp = speedMin + core.rand(speedSteps) / 100;
+                n = _place(flags, n, x, y, sp * Math.cos(a), sp * Math.sin(a), o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(j));
+            }
+            flags.n = n;
+        },
+        // 扩散弹（第四十四章新增；Danmakufu ObjShot_AddShotA1 / taisei halation_orb 式）：
+        // 母弹（慢速 0.6~1px/帧 直行，默认 0.8）飞行 burstDelay 帧（默认 50）后爆裂成 count 颗
+        // 环形扩散子弹，速度 = speed0 * 1.09^k（k=0..count-1，Danmakufu/taisei 递增惯例，speedMax 硬钳）；
+        // 母弹与子弹共用 bullet 槽位（母弹占一槽，爆裂时标记清除、子弹入槽），爆裂由 _tickBurst
+        // 在 _tickCard 每帧结算（age 计数，不依赖每 300 帧回绕的 flags.time）；
+        // 只依赖 flags 状态（本生成器不用随机），确定性、回放自动判胜跳过不受影响。
+        burst: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var count = o.count != null ? o.count : 6;
+            var x = _val(cx, flags) + (o.x0 || 0);
+            var y = _val(cy, flags) + (o.y0 || 0);
+            var n = o.resetN === false ? flags.n : 0;
+            var ms = o.motherSpeed != null ? o.motherSpeed : 0.8;
+            var ma = o.motherAngle != null ? o.motherAngle : Math.PI / 2;
+            var n2 = _place(flags, n, x, y, ms * Math.cos(ma), ms * Math.sin(ma), o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.motherTypeid || o.typeid, _bulletColor(0));
+            if (n2 > n) {
+                flags.burst = flags.burst || [];
+                flags.burst.push({
+                    slot: n2 - 1,
+                    age: 0,
+                    delay: o.burstDelay != null ? o.burstDelay : 50,
+                    count: count,
+                    angle0: o.angle0 != null ? o.angle0 : 0,
+                    span: o.angleSpan != null ? o.angleSpan : Math.PI * 2,
+                    sp0: o.speed0 != null ? o.speed0 : 1.0,
+                    step: o.speedStep != null ? o.speedStep : 1.09,
+                    max: o.speedMax != null ? o.speedMax : 2,
+                    size: o.childSize != null ? o.childSize : 3,
+                    typeid: o.typeid
+                });
+                n = n2;
+            }
+            flags.n = n;
+        },
+        // 螺旋连发（第四十四章新增；Danmakufu ExRumia01 双螺旋式）：每次发射角度 += spinStep
+        // （如 0.35 rad/发），发射间隔 interval；发射次数由单调帧数推导（danmakuCycle*300 + flags.time，
+        //   跨 300 帧回绕连续，避免每 5 秒角度跳变）；mirror:true 时同帧再发一颗反向对称弹（-a），
+        //   形成双螺旋；只用 flags 与 core.rand（本生成器不用随机），确定性、回放自动判胜跳过不受影响。
+        spiral: function (flags, cx, cy, opts) {
+            var o = opts || {};
+            var x = _val(cx, flags) + (o.x0 || 0);
+            var y = _val(cy, flags) + (o.y0 || 0);
+            var n = o.resetN === false ? flags.n : 0;
+            var speed = o.speed != null ? o.speed : 1.2;
+            var spinStep = o.spinStep != null ? o.spinStep : 0.35;
+            var a0 = o.angle0 != null ? o.angle0 : 0;
+            var interval = o.interval != null ? o.interval : 60;
+            var offset = o.offset != null ? o.offset : 0;
+            var shotsPerCycle = Math.floor((299 - offset) / interval) + 1;
+            var kIn = Math.floor((flags.time - offset) / interval);
+            var k = ((flags.danmakuCycle || 0) * shotsPerCycle + kIn);
+            var a = a0 + k * spinStep;
+            n = _place(flags, n, x, y, speed * Math.cos(a), speed * Math.sin(a), o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(k));
+            if (o.mirror) {
+                n = _place(flags, n, x, y, speed * Math.cos(-a), speed * Math.sin(-a), o.size != null ? o.size : 6, o.type != null ? o.type : 1, true, o.typeid, _bulletColor(k + 1));
+            }
+            flags.n = n;
+        }
+    };
+
+    // ---------------- 第九轮（弹幕多样化）：TH08 弹型表（视觉映射） ----------------
+    // 弹型 ID 只决定视觉：{img, x0, y0, stepX, sw, sh, dw, dh, offX, offY, size}
+    //   img = 素材；x0/y0 = 首帧源矩形左上角；stepX = 4 帧颜色变体的列步进（官方同型 sprite 4 个横向排列）；
+    //   sw/sh = 源矩形尺寸；dw/dh = 绘制尺寸；offX/offY = 绘制左上角相对判定中心 (bulletx+32, bullety+32) 的偏移；
+    //   size = 对应判定档位（仅登记用，判定仍由 bulletsize 决定，公式不变）。
+    // 第四十二章（弹幕素材两图整合）：素材统一指向两张帧表 bullet_small.png / bullet_big.png
+    //   （永不复还式"行=弹型、列=颜色变体"网格；旧合成图 etama_yuyuko.png 与官方 etama*.png、
+    //   enemybullet*.png 已归档至 project/images/_legacy_bullets/，本表矩形按新布局全部重映射）。
+    //   全部帧从 etama_yuyuko.png 现有矩形直接裁贴（不许改色），44/44 逐像素一致，生成脚本 .hermes/build_bullet_sheets.py；
+    //   判定/尺寸/动画机制不变，只换源矩形。
+    // 旧三档默认保留：small/maru/big（未配 typeid 时按 bulletsize 兜底，见 _typeidFor）。
+    // 视觉直径 ≥ 判定直径（playersize=2）：small 20≥8.5 / maru 32≥10 / big 48≥16.32 / rice 22≥10 /
+    //   chu 40≥10 / scale16 24≥10 / scale32 40≥16.32 / star 24≥10 / ring 96≥10 / laser 16≥10 / chou 44≥10。
+    // 新表行布局（行=弹型、列=颜色变体，每弹型 4 色横排）：
+    //   bullet_small.png 128x184：small y0=0(8px，stepX=8) / maru y0=8 / rice y0=24 / chou y0=40（旧错误行，已停用）/
+    //     chu y0=56(32px，stepX=32) / scale16 y0=88 / star y0=135 / chou 正确行 y0=152（第四十四章追加，
+    //     32px，stepX=32；上方 y=151 为 1px 透明守卫行防 Chrome 缩放渗色）；
+    //   bullet_big.png 256x599：scale32 y0=104 / big y0=151(64px，stepX=64) / ring y0=215(256px，单帧) /
+    //     laser y0=471(16x128 垂直长条，单帧)。
+    // 除 chou 外坐标与旧合成图逐字节一致（浏览器 drawImage 缩放采样锚定源矩形绝对坐标，见第四十二章），
+    //   保证渲染逐像素一致；ring/laser 官方源仅单帧（TH08 原样，stepX=0，4 帧循环绘制同一帧，与旧行为一致）。
+    this.danmaku.bulletTypes = {
+        'small':   { img: 'bullet_small.png', x0: 0,  y0: 0,   stepX: 8,  sw: 8,   sh: 8,   dw: 20, dh: 20, offX: 10, offY: 10, size: 3 },
+        'maru':    { img: 'bullet_small.png', x0: 0,  y0: 8,   stepX: 16, sw: 16,  sh: 16,  dw: 32, dh: 32, offX: 16, offY: 16, size: 6 },
+        'big':     { img: 'bullet_big.png',   x0: 0,  y0: 151, stepX: 64, sw: 64,  sh: 64,  dw: 48, dh: 48, offX: 24, offY: 24, size: 14 },
+        'rice':    { img: 'bullet_small.png', x0: 1,  y0: 24,  stepX: 16, sw: 14,  sh: 16,  dw: 22, dh: 24, offX: 11, offY: 12, size: 6 },
+        // 蝶弹（第四十四章勘误）：正确素材 = 官方 etama.png y=176 行（ANM sprite 120-127，32x32 帧格 x 8 列，
+        //   位于用户所述 y=128~192 区带内；y=128/160 无 sprite，是相邻 32px 行的下半部），带透明翼的蝴蝶形；
+        //   旧 y=40 行（源自 etama y=80 排 15x16 抽象蝶形）已停用（该行内容保留但不再映射）。
+        //   4 帧 = 紫/蓝/樱粉/白（第三十三章选色精神；新行仅 8 色，无深紫变体，白系取 col7 灰白）；
+        //   垂直翻转（头朝上 → 头朝下，下落朝向玩家）；源 32x32 → 绘制 44x44（1.375x 放大仍清晰，
+        //   透明翼展更大更易辨识，视觉直径 44 ≥ 判定 10，offX/offY=22 保证视觉中心=判定圆心）。
+        'chou':    { img: 'bullet_small.png', x0: 0,  y0: 152, stepX: 32, sw: 32,  sh: 32,  dw: 44, dh: 44, offX: 22, offY: 22, size: 6 },
+        'chu':     { img: 'bullet_small.png', x0: 0,  y0: 56,  stepX: 32, sw: 32,  sh: 32,  dw: 40, dh: 40, offX: 20, offY: 20, size: 6 },
+        'scale16': { img: 'bullet_small.png', x0: 0,  y0: 88,  stepX: 16, sw: 16,  sh: 16,  dw: 24, dh: 24, offX: 12, offY: 12, size: 6 },
+        'scale32': { img: 'bullet_big.png',   x0: 0,  y0: 104, stepX: 32, sw: 32,  sh: 31,  dw: 40, dh: 40, offX: 20, offY: 20, size: 14 },
+        'star':    { img: 'bullet_small.png', x0: 0,  y0: 135, stepX: 16, sw: 16,  sh: 16,  dw: 24, dh: 24, offX: 12, offY: 12, size: 6 },
+        'ring':    { img: 'bullet_big.png',   x0: 0,  y0: 215, stepX: 0,  sw: 256, sh: 256, dw: 96, dh: 96, offX: 48, offY: 48, size: 6 },
+        'laser':   { img: 'bullet_big.png',   x0: 0,  y0: 471, stepX: 0,  sw: 16,  sh: 128, dw: 16, dh: 160, offX: 8, offY: 80, size: 6 }
+    };
+
+    // ---------------- 阶段二：符卡数据表 + 每卡时限解释器 ----------------
+    // 卡片数据格式：[{ patterns: [{gen, cx, cy, opts}, ...], lowPatterns?: [...], duration? }]
+    // duration = 该卡时限帧数（60 帧/秒），仅限时符配置；不配/0/负数 = 击破符（无时限，打空 enemylife 才换卡）；
+    // patterns = 高血段（enemylife*2 > enemylifemax 时），
+    // lowPatterns = 低血段（不配则沿用 patterns，语义与 case 7 原分支一致）。
+    // opts 公共字段：interval=发射周期（帧）、offset=相位（flags.time % interval == offset 时发射）、
+    //   resetN=发射前是否把空槽搜索起点 n 归零（与原手写块 n=0 语义一致；aimed 接续弹置 false）、
+    //   advanceN=发射后是否推进 n（case 24 瞄准弹原块不推进，置 false）。
+    // cards24（简单模式，case 24·第四十三章弹幕布局调整·扇形为主 + 第四十四章新模式）：5 张卡，每卡 3~5 个模式、扇形类 ≥2——
+    // 双股下扇（fan，斜向扩散，中央列天然缝隙）/ 自机狙扇形（fan aim:true，玩家方向=缝隙，见 fan 生成器注释）/
+    // 瞄准弹（aimed，保留）/ 环形（ring，保留）/ 鳞弹旋转（spin，保留）/ 蝶舞（wave chou，保留）/
+    // 激光横扫（laser，保留）/ 星弹散射（rain，全局仅 1 处"边缘雨"，只打左侧、错开 BOSS 正下方列）/
+    // 随机散射（scatter，第四十四章新增）/ 扩散弹（burst，第四十四章新增）/ 双螺旋（spiral，第四十四章新增）/
+    // 波浪雨（wave 丸弹，第四十四章恢复：卡 2 两列弹体中心 x=140/340，正弦摆动避中央列）；
+    // 垂直雨（原 line vx:0 雨幕）保持移除——用户反馈"垂直雨封锁 BOSS 正下方那列，站列里挨打、躲边上打不到"，
+    // 恢复的"摇摆雨"用 wave 生成器 + 两侧列位实现同类手感但不封中央列；
+    // 扇形以幽幽子位置为发射点向下展开：弹体判定中心=bulletx+32，故扇形 x0:-32 使"弹体中心"对齐 enemyx——
+    // spread 取 ±0.4/±1.2（vy 1.4）时两股扇形之间的中央列（弹体中心 x∈[enemyx±40]）为天然缝隙，
+    // 玩家可站 BOSS 正下方输出、小幅左右移动躲扇形（实测数据见第四十三章）。
+    // 自机狙扇形（fan + aim:true）：以 atan2(玩家-发射点) 为基准角叠加 spread 角偏移（Danmakufu SampleA02 /
+    //   taisei crystal_rain 式）；评估后采用"偶数向 + 对称 spread"：玩家方向落在两股之间（中间一发不正对玩家），
+    //   保留自机狙追位手感且不破坏中央列安全（奇数向会让中间一发周期性直射站桩玩家，弃用，依据见第四十三章）。
+    // 低难度参数（硬性）：弹速 ≤ 2px/帧、瞄准弹 ≤ 1.5px/帧当量（speed 帧数 ≥ 260）、发射间隔 ≥ 50 帧、
+    // 单波连发 ≤ 5（环形/旋转环为扩散弹幕惯例的整环波次，每环 ≤ 6、旋转环 ≤ 5）；
+    // 破卡机制（第三十一章·击破符为主）：卡 1~4 为击破符（不配 duration = 无时限，enemylife 打空才换卡）；
+    // 卡 5 为时符（【时长平衡 2.10.56】duration 3600 帧 = 60 秒，超时自动破卡，spellcardleft==0 时超时直接胜利）。
+    // 每卡血量（【时长平衡 2.10.56】新增）：卡可配 hp 字段单独设血（cards24 卡 5 时符 hp:60000——
+    //   典型进度下有效 DPS ≤ 960（20 发/秒×atk80×命中率60%）时 60 秒内最多打 ~57600，打不空 → 60 秒超时兜底胜利）；
+    //   未配 hp 的卡回满到 enemylifemax（32000）。
+    this.danmaku.cards24 = [
+        {
+            // 卡 1：双股扇形（丸弹）+ 自机狙扇形（米弹）+ 瞄准弹（丸弹，极慢）；击破符（无时限，打空血才换卡）
+            // 第四十六章（配色主题化）：colorOffset 0=紫系主色（4 色循环从第 0 帧开始；同波按 (j+offset)%4 交替）
+            name: "亡郷「亡我郷」",
+            colorOffset: 0,
+            patterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, dirs: [{ vx: 'spread', vy: 1.4 }], x0: -32, spread0: -1.2, spreadStep: 0.8, y0: 12 * SY, size: 6, typeid: 'maru', interval: 100, offset: 10, resetN: true } },
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, aim: true, x0: -32, spread0: -1.35, spreadStep: 0.9, speed: 1.4, y0: 12 * SY, size: 6, typeid: 'rice', interval: 170, offset: 60, resetN: true } },
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 260, size: 6, typeid: 'maru', interval: 320, offset: 40, resetN: false, advanceN: false } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, dirs: [{ vx: 'spread', vy: 1.5 }], x0: -32, spread0: -1.2, spreadStep: 0.8, y0: 12 * SY, size: 6, typeid: 'maru', interval: 95, offset: 10, resetN: true } },
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, aim: true, x0: -32, spread0: -1.35, spreadStep: 0.9, speed: 1.5, y0: 12 * SY, size: 6, typeid: 'rice', interval: 160, offset: 55, resetN: true } },
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 260, size: 6, typeid: 'maru', interval: 320, offset: 40, resetN: false, advanceN: false } }
+            ]
+        },
+        {
+            // 卡 2：双股扇形（米弹）+ 自机狙扇形（星弹）+ 环形（中玉，斜 60° 双路）+ 瞄准弹（星弹）+
+            // 波浪雨（第四十四章恢复：wave 丸弹，两列弹体中心 x=140/340，正弦摆动避开中央列 [200,280]）；击破符（无时限，打空血才换卡）
+            // 第四十六章：colorOffset 1=樱粉系主色
+            name: "亡舞「生者必滅の理」",
+            colorOffset: 1,
+            patterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, dirs: [{ vx: 'spread', vy: 1.4 }], x0: -32, spread0: -1.2, spreadStep: 0.8, y0: 12 * SY, size: 6, typeid: 'rice', interval: 110, offset: 15, resetN: true } },
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, aim: true, x0: -32, spread0: -1.35, spreadStep: 0.9, speed: 1.5, y0: 12 * SY, size: 6, typeid: 'star', interval: 190, offset: 75, resetN: true } },
+                { gen: 'ring', cx: 'enemyx', cy: 'enemyy', opts: { count: 6, speed: 1.0, angle0: 0, angleSpan: Math.PI * 2, size: 6, typeid: 'chu', interval: 300, offset: 30, resetN: true } },
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 280, size: 6, typeid: 'star', interval: 200, offset: 50, resetN: false, advanceN: false } },
+                // 波浪雨：两列 bulletx=108/308 → 弹体中心 x=140/340；正弦摆动漂移上界 ≈ 2/sin(freq/2)×amp
+                //   = 2/sin(0.025)×0.2 ≈ 16px → 扫掠 [124,156]/[324,356]，中央列 [200,280] 留 ≥44px 缝隙；
+                //   速度 1，最大合速度 √(1²+0.2²)≈1.02 ≤ 2px/帧；间隔 190 ≥ 50、连发 2 ≤ 5
+                { gen: 'wave', cx: 108, cy: 16, opts: { count: 2, x0: 0, spacing: 200, y0: 0, speed: 1, amp: 0.2, freq: 0.05, phaseStep: 0.6, size: 6, typeid: 'maru', interval: 190, offset: 90, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, dirs: [{ vx: 'spread', vy: 1.4 }], x0: -32, spread0: -1.2, spreadStep: 0.8, y0: 12 * SY, size: 6, typeid: 'rice', interval: 105, offset: 15, resetN: true } },
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, aim: true, x0: -32, spread0: -1.35, spreadStep: 0.9, speed: 1.5, y0: 12 * SY, size: 6, typeid: 'star', interval: 180, offset: 70, resetN: true } },
+                { gen: 'ring', cx: 'enemyx', cy: 'enemyy', opts: { count: 6, speed: 1.0, angle0: 0, angleSpan: Math.PI * 2, size: 6, typeid: 'chu', interval: 280, offset: 30, resetN: true } },
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 260, size: 6, typeid: 'star', interval: 190, offset: 50, resetN: false, advanceN: false } },
+                { gen: 'wave', cx: 108, cy: 16, opts: { count: 2, x0: 0, spacing: 200, y0: 0, speed: 1, amp: 0.2, freq: 0.05, phaseStep: 0.6, size: 6, typeid: 'maru', interval: 180, offset: 85, resetN: true } }
+            ]
+        },
+        {
+            // 卡 3：双股扇形（中玉）+ 自机狙扇形（蝶弹）+ 瞄准弹（星弹，极慢）+ 边缘雨（星弹，全局唯一 rain，只打左侧、错开中央列）+
+            // 环形（丸弹）+ 随机散射（第四十四章新增：scatter 小玉，极坐标随机方向/速度，downCone=π/6
+            // 排除正下方 ±30°，保护中央列）；击破符（无时限，打空血才换卡）
+            // 第四十六章：colorOffset 2=蓝白系主色
+            name: "華霊「ゴーストバタフライ」",
+            colorOffset: 2,
+            patterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, dirs: [{ vx: 'spread', vy: 1.4 }], x0: -32, spread0: -1.2, spreadStep: 0.8, y0: 12 * SY, size: 6, typeid: 'chu', interval: 120, offset: 10, resetN: true } },
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, aim: true, x0: -32, spread0: -1.35, spreadStep: 0.9, speed: 1.3, y0: 12 * SY, size: 6, typeid: 'chou', interval: 180, offset: 70, resetN: true } },
+                // 第四十七章：卡 3 补瞄准弹（自机狙>=2）；speed=280 帧 → 弹速=距离/280<=1.4px/帧、间隔 320>=50、单发 1<=5
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 280, size: 6, typeid: 'star', interval: 320, offset: 150, resetN: false, advanceN: false } },
+                // 边缘雨：发射点固定在左上侧（cx 110 / cy 16），vx 0.1~0.2、vy 1.4~1.8 → 弹体中心 x∈[158,183]，
+                //   完全避开中央 [200,280]（左侧列带 + 间隙）；速度 max√(0.2²+1.8²)≈1.81 ≤ 2px/帧
+                { gen: 'rain', cx: 110, cy: 16, opts: { count: 2, x0: 0, y0: 0, vxMin: 0.1, vxMax: 0.2, vyMin: 1.4, vyMax: 1.8, size: 6, typeid: 'star', interval: 160, offset: 45, resetN: true } },
+                { gen: 'ring', cx: 'enemyx', cy: 'enemyy', opts: { count: 6, speed: 1.0, angle0: 0, angleSpan: Math.PI * 2, size: 6, typeid: 'maru', interval: 320, offset: 95, resetN: true } },
+                // 随机散射：4 颗 1.0~1.6px/帧、全向随机但排除正下方 ±30°（downCone=π/6）；间隔 200 ≥ 50、连发 4 ≤ 5
+                { gen: 'scatter', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, x0: 0, y0: 12 * SY, speedMin: 1.0, speedMax: 1.6, angle0: 0, angleSpan: Math.PI * 2, downCone: Math.PI / 6, size: 6, typeid: 'small', interval: 200, offset: 130, resetN: true } }
+            ]
+        },
+        {
+            // 卡 4：双股扇形（鳞弹 16）+ 鳞弹旋转（spin，鳞弹 16）+ 自机狙扇形（鳞弹 32）+
+            // 扩散弹（第四十四章新增：burst 母弹 chu 慢速直行 50 帧爆裂成 6 颗小玉，速度 1.0×1.09^k 递增）；
+            // 击破符（无时限，打空血才换卡）
+            // 第四十六章：colorOffset 3=白系主色（第 4 帧变体起手，卡内整体偏白亮）
+            name: "幽曲「リポジトリ・オブ・ヒロイック」",
+            colorOffset: 3,
+            patterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, dirs: [{ vx: 'spread', vy: 1.4 }], x0: -32, spread0: -1.2, spreadStep: 0.8, y0: 12 * SY, size: 6, typeid: 'scale16', interval: 120, offset: 10, resetN: true } },
+                { gen: 'spin', cx: 'enemyx', cy: 'enemyy', opts: { count: 5, speed: 1.2, angle0: Math.PI / 6, spinSpeed: 0.008, size: 6, typeid: 'scale16', interval: 260, offset: 60, resetN: true } },
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, aim: true, x0: -32, spread0: -1.35, spreadStep: 0.9, speed: 1.2, y0: 12 * SY, size: 14, typeid: 'scale32', interval: 200, offset: 100, resetN: true } },
+                // 扩散弹：母弹 0.8px/帧 直行 50 帧（y≈92→132）爆裂；6 颗环形角距 60°（距正下最近 30°，
+                //   从居中母弹位到 y=300 时 |dx|≥97 > 40，不穿中央列）；子弹速度 1.0/1.09/1.19/1.30/1.41/1.54 ≤ 2
+                { gen: 'burst', cx: 'enemyx', cy: 'enemyy', opts: { count: 6, x0: 0, y0: 12 * SY, motherSpeed: 0.8, motherAngle: Math.PI / 2, burstDelay: 50, angle0: 0, angleSpan: Math.PI * 2, speed0: 1.0, speedStep: 1.09, speedMax: 2, size: 6, childSize: 3, typeid: 'small', motherTypeid: 'chu', interval: 260, offset: 140, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, dirs: [{ vx: 'spread', vy: 1.4 }], x0: -32, spread0: -1.2, spreadStep: 0.8, y0: 12 * SY, size: 6, typeid: 'scale16', interval: 115, offset: 10, resetN: true } },
+                { gen: 'spin', cx: 'enemyx', cy: 'enemyy', opts: { count: 5, speed: 1.2, angle0: 0, spinSpeed: -0.008, size: 6, typeid: 'scale16', interval: 250, offset: 55, resetN: true } },
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, aim: true, x0: -32, spread0: -1.35, spreadStep: 0.9, speed: 1.3, y0: 12 * SY, size: 14, typeid: 'scale32', interval: 190, offset: 95, resetN: true } },
+                { gen: 'burst', cx: 'enemyx', cy: 'enemyy', opts: { count: 6, x0: 0, y0: 12 * SY, motherSpeed: 0.8, motherAngle: Math.PI / 2, burstDelay: 50, angle0: 0, angleSpan: Math.PI * 2, speed0: 1.0, speedStep: 1.09, speedMax: 2, size: 6, childSize: 3, typeid: 'small', motherTypeid: 'chu', interval: 250, offset: 135, resetN: true } }
+            ]
+        },
+        {
+            // 卡 5：激光横扫（激光，慢速）+ 双股扇形（蝶弹）+ 自机狙扇形（鳞弹 32）+ 瞄准弹（丸弹，极慢）+ 蝶舞（wave，蝶弹，慢速摆动）+
+            // 双螺旋（第四十四章新增：spiral mirror:true，米弹，每发角度 +0.35 rad，双臂对称）
+            // 时符：单独血量 hp 60000（典型进度 60 秒内打不空，靠时限超时破卡）＋限时 3600 帧（60 秒，5 分钟总时长的兜底上限），
+            // 超时自动破卡；spellcardleft==0 时超时直接胜利
+            duration: 3600,
+            hp: 60000,
+            time: true, // 宣言后缀"·时符"（_tickCard 读取，纯显示；cards7 不配此字段保持原样）
+            // 第四十六章：卡 5 混合配色（colorAlt 逐波起始偏移交替：wave0=0、wave1=1、...循环），
+            // 配合同波 (j+offset)%4 交替，整卡多色混排、无单一主色
+            colorOffset: 0,
+            colorAlt: true,
+            name: "死蝶「華胥の永眠」",
+            patterns: [
+                { gen: 'line', cx: -16, cy: 240, opts: { count: 1, x0: 0, spacing: 0, y0: 0, vx: 1.2, vy: 0, size: 6, typeid: 'laser', interval: 220, offset: 15, resetN: true } },
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, dirs: [{ vx: 'spread', vy: 1.4 }], x0: -32, spread0: -1.2, spreadStep: 0.8, y0: 12 * SY, size: 6, typeid: 'chou', interval: 110, offset: 25, resetN: true } },
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 4, aim: true, x0: -32, spread0: -1.35, spreadStep: 0.9, speed: 1.2, y0: 12 * SY, size: 14, typeid: 'scale32', interval: 210, offset: 70, resetN: true } },
+                // 第四十七章：卡 5 补瞄准弹（自机狙>=2）；speed=300 帧 → 弹速=距离/300<=1.3px/帧、间隔 340>=50、单发 1<=5
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 300, size: 6, typeid: 'maru', interval: 340, offset: 155, resetN: false, advanceN: false } },
+                // 蝶舞：三列弹体中心 x=52/177/302（列距 125，避开中央 [200,280]）；正弦摆动位置漂移上界
+                //   ≈ 2/sin(freq/2)×amp（300 帧时间回绕会切成两段正弦和）——实测 freq 0.015+amp 1.0 摆幅 ±133px、
+                //   amp 0.35 仍达 ±25px 会穿中央带，故取 freq 0.05 + amp 0.2 → 漂移上界 ≈16px，
+                //   中心列摆幅 [161,193]、右列 [286,318] 均避开中央带；速度 1，最大合速度 √(1²+0.2²)≈1.02 ≤ 2px/帧
+                { gen: 'wave', cx: 20, cy: 16, opts: { count: 3, x0: 0, spacing: 125, y0: 0, speed: 1, amp: 0.2, freq: 0.05, phaseStep: 0.6, size: 6, typeid: 'chou', interval: 230, offset: 120, resetN: true } },
+                // 双螺旋：每发角度 += 0.35 rad（跨 300 帧回绕由 danmakuCycle 连续），mirror 反向对称双臂；
+                //   速度 1.2 ≤ 2、间隔 90 ≥ 50、单发 2 ≤ 5；双臂扫过正下方时每次仅 1 颗短暂穿中央列，
+                //   实测逐卡中央列通过数仍 ≤ 两侧 50%（见第四十四章）
+                { gen: 'spiral', cx: 'enemyx', cy: 'enemyy', opts: { x0: 0, y0: 12 * SY, speed: 1.2, spinStep: 0.35, angle0: -1.1, mirror: true, interval: 90, offset: 30, resetN: true, size: 6, typeid: 'rice' } }
+            ]
+        }
+    ];
+
+    // cards7（困难模式，case 7）：原 case 7 全部弹幕段逐段等价搬入（spellcardleft 8~0 共 9 个阶段：
+    // 8 张符卡 + 破完卡后的最终阶段；各段参数与原手写块逐字节一致，含 n 接续搜索）；
+    // 高血段用 patterns、低血段用 lowPatterns（enemylife*2 > enemylifemax 判定，与原分支语义一致）；每卡时限 1500 帧（25 秒）。
+    this.danmaku.cards7 = [
+        {
+            // spellcardleft 8：高血=垂直雨 4 连（192-j*32，size6）；低血=(2-j) 扇形 5 连（size14）
+            duration: 1500,
+            name: "亡郷「亡我郷 -遼東-」",
+            patterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -32 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 6, type: 1, interval: 50, offset: 10, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 5, dirs: [{ vx: 'spread', vy: 2 }], spread0: 2, spreadStep: -1, y0: 12 * SY, size: 14, type: 1, interval: 50, offset: 10, resetN: true } }
+            ]
+        },
+        {
+            // spellcardleft 7：高血=垂直雨 4 连；低血=垂直雨 4 连 + 瞄准弹 /100（同帧接续，aimed 不归零 n）
+            duration: 1500,
+            name: "亡舞「生者必滅の理」",
+            patterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -32 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 6, type: 1, interval: 50, offset: 10, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -32 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 6, type: 1, interval: 50, offset: 10, resetN: true } },
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 100, size: 14, type: 1, interval: 50, offset: 10, resetN: false } }
+            ]
+        },
+        {
+            // spellcardleft 6：高血=大弹 4 连（192-j*64，size14）；低血=大弹 4 连 + 瞄准弹 /100
+            duration: 1500,
+            name: "華霊「ゴーストバタフライ」",
+            patterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -64 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 14, type: 1, interval: 50, offset: 10, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -64 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 14, type: 1, interval: 50, offset: 10, resetN: true } },
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 100, size: 14, type: 1, interval: 50, offset: 10, resetN: false } }
+            ]
+        },
+        {
+            // spellcardleft 5：高血=大弹 4 连；低血=(2-j) 扇形 5 连
+            duration: 1500,
+            name: "幽曲「リポジトリ・オブ・ヒロイック」",
+            patterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -64 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 14, type: 1, interval: 50, offset: 10, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 5, dirs: [{ vx: 'spread', vy: 2 }], spread0: 2, spreadStep: -1, y0: 12 * SY, size: 14, type: 1, interval: 50, offset: 10, resetN: true } }
+            ]
+        },
+        {
+            // spellcardleft 4：高血=大弹 4 连；低血=9 连四向扇形 (j-4)/2（%50==40）+ 瞄准弹 /100（%50==10）
+            duration: 1500,
+            name: "反魂「蝶の羽風生に還す」",
+            patterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -64 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 14, type: 1, interval: 50, offset: 10, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 9, dirs: [{ vx: 'spread', vy: 2 }, { vx: 'spread', vy: -2 }, { vx: 3, vy: 'spread' }, { vx: -3, vy: 'spread' }], spread0: -2, spreadStep: 0.5, size: 3, type: 1, interval: 50, offset: 40, resetN: true } },
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 100, size: 14, type: 1, interval: 50, offset: 10, resetN: false } }
+            ]
+        },
+        {
+            // spellcardleft 3：高血=大弹 4 连；低血=5 连四向扇形 (j*2-4)*3/4
+            duration: 1500,
+            name: "幽雅「死出の鐚」",
+            patterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -64 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 14, type: 1, interval: 50, offset: 10, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 5, dirs: [{ vx: 'spread', vy: 2 }, { vx: 'spread', vy: -2 }, { vx: 3, vy: 'spread' }, { vx: -3, vy: 'spread' }], spread0: -3, spreadStep: 1.5, size: 3, type: 1, interval: 50, offset: 10, resetN: true } }
+            ]
+        },
+        {
+            // spellcardleft 2：高血=大弹 4 连；低血=旋转扫射 /15-2（time%8==0）
+            duration: 1500,
+            name: "彼岸「四丁目迷いの道」",
+            patterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -64 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 14, type: 1, interval: 50, offset: 10, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 1, dirs: [{ vx: 'spread', vy: 2 }, { vx: '-spread', vy: -2 }, { vx: 3, vy: '-spread' }, { vx: -3, vy: 'spread' }], spreadTimeDiv: 15, spreadTimeBase: 2, size: 6, type: 1, interval: 8, offset: 0, resetN: true } }
+            ]
+        },
+        {
+            // spellcardleft 1：高血=大弹 4 连；低血=旋转扫射 /15-2 + 瞄准弹 /100
+            duration: 1500,
+            name: "桜符「完全なる桜開花」",
+            patterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -64 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 14, type: 1, interval: 50, offset: 10, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 1, dirs: [{ vx: 'spread', vy: 2 }, { vx: '-spread', vy: -2 }, { vx: 3, vy: '-spread' }, { vx: -3, vy: 'spread' }], spreadTimeDiv: 15, spreadTimeBase: 2, size: 6, type: 1, interval: 8, offset: 0, resetN: true } },
+                { gen: 'aimed', cx: 'enemyx', cy: 'enemyy', opts: { speed: 100, size: 14, type: 1, interval: 50, offset: 10, resetN: false } }
+            ]
+        },
+        {
+            // spellcardleft 0（破完卡后的最终阶段）：高血=大弹 4 连；低血=%100==90 的 9 连扇形 (j-4)/2
+            duration: 1500,
+            name: "死蝶「華胥の永眠」",
+            patterns: [
+                { gen: 'line', cx: 192 * SX, cy: 'enemyy', opts: { count: 4, spacing: -64 * SX, jx: 32, jy: 24, vx: 0, vy: 2, size: 14, type: 1, interval: 50, offset: 10, resetN: true } }
+            ],
+            lowPatterns: [
+                { gen: 'fan', cx: 'enemyx', cy: 'enemyy', opts: { count: 9, dirs: [{ vx: 'spread', vy: 2 }, { vx: 'spread', vy: -2 }, { vx: 3, vy: 'spread' }, { vx: -3, vy: 'spread' }], spread0: -2, spreadStep: 0.5, size: 3, type: 1, interval: 100, offset: 90, resetN: true } }
+            ]
+        }
+    ];
+
+    // 取当前卡（cards24：数组顺序=战斗顺序，index = length - spellcardleft；
+    // cards7：数组顺序=战斗顺序（spellcardleft 8..0），index = length - 1 - spellcardleft；无卡（如回放自动判胜帧）返回 null）
+    this.danmaku._currentCard = function (flags) {
+        var table = flags.enemyId == 24 ? _self.danmaku.cards24 : (flags.enemyId == 7 ? _self.danmaku.cards7 : null);
+        if (!table) return null;
+        var idx = flags.enemyId == 7 ? table.length - 1 - flags.spellcardleft : table.length - flags.spellcardleft;
+        if (idx < 0 || idx >= table.length) return null;
+        return table[idx];
+    };
+
+    // 【时长平衡 2.10.56】破卡回满：按"下一张卡"的血量回满（卡配 hp 字段用卡内 hp，未配回 enemylifemax），
+    // 同时同步 enemylifemax（血条满格 + 高/低血段阈值按当前卡血量计算）；cards7 未配 hp → 行为与旧版一致。
+    // 注意调用时机：必须在 spellcardleft 已减一（指向下一张卡）之后调用。
+    this.danmaku._refillCard = function (flags) {
+        var card = _self.danmaku._currentCard(flags);
+        var hp = null;
+        // 【2.10.57 动态HP】幽幽子（enemyId 24）进战实时计算的每卡血量覆盖表优先（flags.cardHpOverride，
+        // 由 danmaku.start 写入，见上）：覆盖 cards24 静态 hp 字段（静态表保留作设计基线）；
+        // cards7 / 无 dynamicHp 时无该字段 → 走旧逻辑（卡内 hp 或 enemylifemax），行为与旧版一致
+        if (flags.enemyId == 24 && flags.cardHpOverride) {
+            var _idx = flags.cardHpOverride.length - flags.spellcardleft;
+            if (_idx >= 0 && _idx < flags.cardHpOverride.length) hp = flags.cardHpOverride[_idx];
+        }
+        if (hp == null) hp = (card && card.hp) || flags.enemylifemax;
+        flags.enemylife = hp;
+        flags.enemylifemax = hp;
+        // 第四十六章（配色主题化）：破卡换卡同步卡级 colorOffset（cards24 专用：卡 1~4 固定
+        // 0/1/2/3、卡 5 colorAlt 逐波交替）；cards7 不写 colorWaveOff → 生成器不配色，弹色不变
+        if (flags.enemyId == 24) {
+            flags.colorOffset = (card && card.colorOffset != null)
+                ? (((card.colorOffset % 4) + 4) % 4) : 0;
+            flags.colorWave = 0;
+            flags.colorWaveOff = flags.colorOffset;
+        }
+    };
+
+    // 每帧解释器：查表（按 spellcardleft 选卡 + 高血/低血段）+ 按 timer 条件生成 + 生成器调用；
+    // 同时结算每卡时限：仅 duration>0 的卡（时符）计时破卡——cardTimer 到 duration 自动破卡
+    // （spellcardleft-1、enemylife 回满、timer 归零、破卡提示）；duration 缺失/<=0 的卡为击破符
+    // （无时限，只由 parallelDo 伤害路径 enemylife<=0 破卡，cardTimer 继续推进仅作节奏/空窗计数）；
+    // spellcardleft==0 时超时直接胜利（置 enemylife=0，走 parallelDo 现有胜利分支回城）。
+    this.danmaku._tickCard = function (flags) {
+        if (flags.enemyId != 24 && flags.enemyId != 7) return;
+        var card = _self.danmaku._currentCard(flags);
+        if (!card) return;
+        // 第四十四章：单调帧计数（flags.time 每 300 帧回绕；_tickCard 每帧调用，检测回绕递增
+        // danmakuCycle → spiral 螺旋角度跨周期连续，避免每 5 秒角度跳变；只依赖 flags，确定性/回放安全）
+        if (flags.lastTick == null) flags.lastTick = flags.time;
+        if (flags.time < flags.lastTick) flags.danmakuCycle = (flags.danmakuCycle || 0) + 1;
+        flags.lastTick = flags.time;
+        // 扩散弹爆裂结算（在生成之前跑：母弹 age/爆裂与同帧新生成确定性排序）
+        _self.danmaku._tickBurst(flags);
+        // 符卡宣言（音效）：卡索引变化且仍有卡时响一次（战斗首帧 lastCardIdx=-1 → 卡 1 即响；高血→低血段切换不算新卡不响）
+        // 击破符/时符区分：时符（time:true）卡名后缀"·时符"，击破符不加（纯显示）
+        var _cardTable = flags.enemyId == 24 ? _self.danmaku.cards24 : _self.danmaku.cards7;
+        var _cardIdx = flags.enemyId == 7 ? _cardTable.length - 1 - flags.spellcardleft : _cardTable.length - flags.spellcardleft;
+        if (_cardIdx !== flags.lastCardIdx && flags.spellcardleft > 0) {
+            _self.danmaku._sfx('danmaku_declare');
+            flags.cardNameFx = { text: (card.name || '') + (card.time ? '·时符' : ''), life: 90 };
+            flags.lastCardIdx = _cardIdx;
+        }
+        flags.cardTimer = (flags.cardTimer || 0) + 1;
+        // 击破符（duration 缺失/<=0）不进入超时破卡判定；只有时符（duration>0）才计时破卡
+        if (card.duration > 0 && flags.cardTimer >= card.duration) {
+            // 时符超时破卡：符卡数减一、敌血回满（按下一张卡血量，见 _refillCard）、计时归零、破卡提示
+            flags.spellcardleft -= 1;
+            _self.danmaku._sfx('danmaku_cardget');
+            _self.danmaku._refillCard(flags);
+            flags.cardTimer = 0;
+            flags.cardBreakFx = { life: 20 }; // 破卡提示（符卡击破，短暂淡出）
+            flags.breakFlash = 5;
+            // 第五轮（弹幕节奏）：超时破卡同样清屏（敌弹全清+擦弹标记复位，自机弹保留）+ 回高血段
+            for (var i = 0; i < 100; i++) { flags.bullet[i] = 0; flags.grazed[i] = 0; }
+            flags.highPhase = 1;
+            flags.ceaseFx = null;
+            // 已无下一张卡（最后一卡/最终阶段超时）→ 直接胜利：
+            // 置 spellcardleft=0 + enemylife=0，走 parallelDo 现有胜利分支（enemylife<=0 且 spellcardleft==0）回城
+            if (_self.danmaku._currentCard(flags)) return;
+            flags.spellcardleft = 0;
+            flags.enemylife = 0;
+            return;
+        }
+        // 第五轮（弹幕节奏）：低血段切换检测——本卡有 lowPatterns 且首次进入低血段时停火 45 帧 + 提示（仅触发一次，破卡回血复位）
+        if (flags.ceaseFx && flags.ceaseFx.life > 0) flags.ceaseFx.life -= 1;
+        if (card.lowPatterns && flags.highPhase && flags.enemylife * 2 <= flags.enemylifemax) {
+            flags.highPhase = 0;
+            flags.ceaseFx = { life: 45 };
+        }
+        // 高血/低血段选择（与 case 7 原分支语义一致）
+        var list = (flags.enemylife * 2 > flags.enemylifemax) ? card.patterns : (card.lowPatterns || card.patterns);
+        // 第五轮（弹幕节奏）：每卡开始 30 帧空窗（cardTimer<30 不生成）；低血段停火（ceaseFx>0 不生成）
+        if (flags.cardTimer >= 30 && !(flags.ceaseFx && flags.ceaseFx.life > 0)) {
+            flags.n = 0;
+            for (var p = 0; p < list.length; p++) {
+                var pat = list[p];
+                var o = pat.opts || {};
+                if (flags.time % o.interval == o.offset) {
+                    var gen = _self.danmaku.spawn[pat.gen];
+                    if (gen) {
+                        // 第四十六章（配色主题化）：每波起始色偏移——卡 1~4 固定（colorOffset），
+                        // 卡 5（colorAlt）逐波 +1 交替（wave0=offset、wave1=offset+1、...），
+                        // 形成整卡混合配色；只写 flags.colorWaveOff/colorWave，回放安全
+                        // 仅 cards24 启用（cards7 保持 colorWaveOff=undefined → 生成器不配色，case 7 弹色不变）
+                        if (flags.enemyId == 24) {
+                            var _cBase = ((flags.colorOffset || 0) + (card.colorAlt ? (flags.colorWave || 0) : 0)) % 4;
+                            flags.colorWaveOff = _cBase;
+                            if (card.colorAlt) flags.colorWave = ((flags.colorWave || 0) + 1) % 4;
+                        }
+                        // 音效调整：敌方弹幕释放音（每波一次，不是每颗弹；复用 danmaku_shot 素材，自机射击音已移除）
+                        _self.danmaku._sfx('danmaku_shot');
+                        gen(flags, pat.cx, pat.cy, o);
+                    }
+                }
+            }
+        }
+    };
+
+    // 扩散弹每帧结算：age 累计，到 burstDelay 爆裂（母弹标记清除、子弹环形入槽）；
+    // 母弹被命中/越界清除时（bullet[slot]!=1）同步移除登记，不产生子弹；
+    // 子弹入槽沿用 _place 空槽搜索（与 ring 同构）；只依赖 flags，确定性、回放自动判胜跳过不受影响。
+    this.danmaku._tickBurst = function (flags) {
+        var list = flags.burst;
+        if (!list || list.length === 0) return;
+        for (var b = list.length - 1; b >= 0; b--) {
+            var e = list[b];
+            if (flags.bullet[e.slot] != 1) { list.splice(b, 1); continue; }
+            e.age += 1;
+            if (e.age < e.delay) continue;
+            var bx = flags.bulletx[e.slot] + 32; // 母弹判定中心
+            var by = flags.bullety[e.slot] + 32;
+            flags.bullet[e.slot] = 0; // 母弹标记清除（槽位可复用）
+            flags.grazed[e.slot] = 0;
+            list.splice(b, 1);
+            var n = 0;
+            for (var j = 0; j < e.count; j++) {
+                var a = e.angle0 + e.span * j / e.count;
+                var sp = Math.min(e.max, e.sp0 * Math.pow(e.step, j));
+                n = _place(flags, n, bx - 32, by - 32, sp * Math.cos(a), sp * Math.sin(a), e.size, 1, true, e.typeid, _bulletColor(j));
+            }
+            flags.n = n;
+        }
+    };
+
+    // ---------------- 胜利（由 danmaku 地板 parallelDo 的回城 changeFloor 完成后回调） ----------------
+    this.danmaku._afterWin = function () {
+        _self._unregisterMove();
+        core.setHeroOpacity(1);
+        var cfg = _self._cfg;
+        _self._cfg = null;
+        flags.bulletscreen = 0;
+        flags.auraFx = null;
+        // 胜利已回 flags.pfloor：显式恢复楼层 BGM（lastBgmKey 防重放可能拦截 bgmTick 自动恢复）
+        _self._restoreFloorBgm(flags.pfloor);
+        if (cfg && cfg.onWin) {
+            try {
+                cfg.onWin();
+            } catch (e) {
+                console.error('【弹幕战】onWin:', e);
+            }
+        }
+    };
+
+    // ---------------- 失败（由 parallelDo 致死分支调用） ----------------
+    this.danmaku._onLose = function () {
+        _self._unregisterMove();
+        core.setHeroOpacity(1);
+        flags.bulletscreen = 0;
+        flags.auraFx = null;
+        // 失败：恢复进入弹幕战前的楼层 BGM（避免战斗 BGM 残留到失败结算）
+        _self._restoreFloorBgm(flags.pfloor);
+        _self._cfg = null;
+    };
+
+    // ---------------- 立即结束（外部兜底） ----------------
+    this.danmaku.stop = function () {
+        _self._unregisterMove();
+        core.setHeroOpacity(1);
+        flags.bulletscreen = 0;
+        flags.auraFx = null;
+        // 外部立即结束：同样恢复进入弹幕战前的楼层 BGM
+        _self._restoreFloorBgm(flags.pfloor);
+        _self._cfg = null;
+    };
+
+    // ---------------- 移动控制（键盘方向键 + 触摸拖动，战斗开始注册、结束注销） ----------------
+    // 第四十五章：操作改造——电脑端仅键盘方向键（鼠标 1:1 跟手无物理限制视为“外挂”，禁用拖动）；
+    // 手机端保留触摸拖动（触摸受屏幕/拇指限制，差距可接受，手机玩家最自然手势）。
+    // 引擎把 touch/mouse 统一走 core.actions（main.js 的 onmousedown/onmousemove 与
+    // ontouchstart/ontouchmove 均触发同一条 ondown/onmove/onup 链路），因此 main.js 在分发时
+    // 于 core.dom.data 打标 __danmakuPointerType（'mouse'/'touch'，等价于 pointer 事件类型），
+    // 本插件按指针类型分流：mouse → 忽略（不进入拖拽）；touch → 1:1 跟手拖拽（触屏笔记本
+    // 触摸可拖、鼠标不可拖；无触摸桌面永不触发 touch，天然只走键盘）。
+    // 拖动 1:1 跟手（位移 = 手指位移，越界钳制到战斗区域），点按不改变位置，
+    // 触摸拖动 + 自动射击 = 完整玩法，无需额外按键。
+    this._registerMove = function () {
+        if (flags.insertmove == 1) return;
+        flags.insertmove = 1;
+        flags.danmakuDown = 0;
+        flags.danmakuPx1 = 0;
+        flags.danmakuPy1 = 0;
+        // 注意：键盘必须注册在 onkeyDown 级别并消费方向键（返回 true 截断 _sys_onkeyDown）。
+        // 否则方向键会走 pressKey -> moveHero 的格子移动并被记入录像路线（move:/input:），
+        // 而回放期间弹幕战是自动胜利跳过的，多余路线项会导致录像错位。
+        // 【2.10.65 任务一】键盘按住持续移动（修复用户反馈"方向键按住 动→停→动"卡顿）：
+        // 旧实现只在 keydown 事件里移动一次，按住时依赖 OS 按键重复（有初始 delay），产生停顿。
+        // 新实现：keydown 置方向标志 flags.danmakuKey.{left/right/up/down} 并【首次按下立即移动一次】
+        // （零延迟响应）；OS 重复 keydown 因标志已置 1 不再重复移动；持续移动由 danmaku 地板
+        // parallelDo 每帧按标志推进 flags.ispeed=3px/帧（第四十七章：由 5px 降为 3px，更好躲弹；
+        // 无 OS 重复 delay、无停顿帧）。斜向不归一化（左+上 = 两轴各 3px，与第四十五/四十六章一致）；
+        // keyup 清标志即停。
+        // 只写 flags、不写 route，回放安全；触摸拖拽 1:1 逻辑不受影响。
+        core.registerAction('onkeyDown', 'danmaku_move_control', function (e) {
+            var keycode = e.keyCode || e.which;
+            if (keycode < 37 || keycode > 40) return false;
+            var k = flags.danmakuKey || (flags.danmakuKey = { left: 0, right: 0, up: 0, down: 0 });
+            var dirs = { 37: 'left', 38: 'up', 39: 'right', 40: 'down' };
+            var d = dirs[keycode];
+            if (k[d] != 1) {
+                k[d] = 1;
+                if (d == 'left' && flags.playerx > MOVE_MIN) flags.playerx -= flags.ispeed;
+                if (d == 'up' && flags.playery > MOVE_MIN_Y) flags.playery -= flags.ispeed;
+                if (d == 'right' && flags.playerx < MOVE_MAX_X) flags.playerx += flags.ispeed;
+                if (d == 'down' && flags.playery < MOVE_MAX_Y) flags.playery += flags.ispeed;
+            }
+            return true;
+        }, 100);
+        core.registerAction('onkeyUp', 'danmaku_move_control', function (e) {
+            var keycode = e.keyCode || e.which;
+            if (keycode < 37 || keycode > 40) return false;
+            var k = flags.danmakuKey;
+            if (k) {
+                if (keycode == 37) k.left = 0;
+                if (keycode == 38) k.up = 0;
+                if (keycode == 39) k.right = 0;
+                if (keycode == 40) k.down = 0;
+            }
+            return true;
+        }, 100);
+        // 触摸拖动：ondown 记按下点（鼠标事件忽略），onmove 按位移移动自机，onup 释放。
+        // 战斗期间消费三类事件（返回 true），防止松开手指时 _sys_onup 触发寻路，
+        // 把隐藏的格子英雄移走并污染录像路线。
+        core.registerAction('ondown', 'danmaku_touch_control', function (x, y, px, py) {
+            if (!flags.bulletscreen) return false;
+            // 鼠标按下不进入拖拽（电脑端只允许方向键）；仍消费事件，防止 _sys_ondown 触发寻路
+            if (core.dom.data.__danmakuPointerType == 'mouse') return true;
+            flags.danmakuDown = 1;
+            flags.danmakuPx1 = px;
+            flags.danmakuPy1 = py;
+            return true;
+        }, 100);
+        core.registerAction('onmove', 'danmaku_touch_control', function (x, y, px, py) {
+            if (!flags.bulletscreen) return false;
+            // 鼠标移动不拖动（含触摸拖拽期间的鼠标输入），只处理触摸
+            if (core.dom.data.__danmakuPointerType == 'mouse') return true;
+            if (flags.danmakuDown == 1) {
+                // 1:1 跟手：位移 = 本次指针位移（逻辑画布坐标），越界钳制到战斗区域
+                var nx = flags.playerx + (px - flags.danmakuPx1);
+                var ny = flags.playery + (py - flags.danmakuPy1);
+                if (nx < MOVE_MIN) nx = MOVE_MIN;
+                else if (nx > MOVE_MAX_X) nx = MOVE_MAX_X;
+                if (ny < MOVE_MIN_Y) ny = MOVE_MIN_Y;
+                else if (ny > MOVE_MAX_Y) ny = MOVE_MAX_Y;
+                // 锚点只推进实际生效位移，越界部分不累计（拖出边界后往回拖能立刻跟回）
+                flags.danmakuPx1 += nx - flags.playerx;
+                flags.danmakuPy1 += ny - flags.playery;
+                flags.playerx = nx;
+                flags.playery = ny;
+            }
+            return true;
+        }, 100);
+        // 触摸/鼠标抬起都释放拖拽状态（恢复现场，防止残留 danmakuDown）
+        core.registerAction('onup', 'danmaku_touch_control', function (x, y, px, py) {
+            if (!flags.bulletscreen) return false;
+            flags.danmakuDown = 0;
+            return true;
+        }, 100);
+    };
+    this._unregisterMove = function () {
+        core.unregisterAction('ondown', 'danmaku_touch_control');
+        core.unregisterAction('onmove', 'danmaku_touch_control');
+        core.unregisterAction('onup', 'danmaku_touch_control');
+        core.unregisterAction('keyDown', 'danmaku_move_control');
+        core.unregisterAction('onkeyDown', 'danmaku_move_control');
+        core.unregisterAction('onkeyUp', 'danmaku_move_control');
+        flags.insertmove = 0;
+    };
+};
+
+_danmakuPluginFn();

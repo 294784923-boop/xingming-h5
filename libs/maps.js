@@ -2111,6 +2111,10 @@ maps.prototype.showBlock = function (x, y, floorId) {
     if (!floorId) return;
     var block = core.getBlock(x, y, floorId, true);
     if (block == null) return; // 不存在
+    // 【星冥线】地图变更计数：show/hide 会翻转 block.disable，禁用块按
+    // _canMoveDirectly_checkNextPoint 视为可通行（地图可达性改变），route 折叠
+    // 的 mapVer 判定需覆盖，避免折叠掉改变地形的往返段。
+    core.status.__mapVer__ = (core.status.__mapVer__ || 0) + 1;
     // 本身是禁用事件，启用之
     if (block.disable) {
         block.disable = false;
@@ -2137,6 +2141,10 @@ maps.prototype.hideBlock = function (x, y, floorId) {
     var block = core.getBlock(x, y, floorId, true);
     if (block == null) return; // 不存在
 
+    // 【星冥线】地图变更计数：show/hide 会翻转 block.disable，禁用块按
+    // _canMoveDirectly_checkNextPoint 视为可通行（地图可达性改变），route 折叠
+    // 的 mapVer 判定需覆盖，避免折叠掉改变地形的往返段。
+    core.status.__mapVer__ = (core.status.__mapVer__ || 0) + 1;
     block.disable = true;
     core.setMapBlockDisabled(floorId, block.x, block.y, true);
     this._updateMapArray(floorId, block.x, block.y);
@@ -2151,6 +2159,8 @@ maps.prototype.hideBlockByIndex = function (index, floorId) {
     if (!floorId) return;
     core.extractBlocks(floorId);
     var blocks = core.status.maps[floorId].blocks, block = blocks[index];
+    // 【星冥线】地图变更计数（见 hideBlock 注释）
+    core.status.__mapVer__ = (core.status.__mapVer__ || 0) + 1;
     block.disable = true;
     core.setMapBlockDisabled(floorId, block.x, block.y, true);
     this._updateMapArray(floorId, block.x, block.y);
@@ -2190,6 +2200,9 @@ maps.prototype.removeBlock = function (x, y, floorId) {
     floorId = floorId || core.status.floorId;
     if (!floorId) return false;
 
+    // 【星冥线】地图变更计数：route 折叠（checkRouteFolding）依赖它判断往返段
+    // 是否改过地图（开门/拾取/战斗移除都会走到这里），避免折叠掉有状态影响的动作。
+    core.status.__mapVer__ = (core.status.__mapVer__ || 0) + 1;
     core.extractBlocks(floorId);
     for (var i in core.status.maps[floorId].blocks) {
         var block = core.status.maps[floorId].blocks[i];
@@ -2217,6 +2230,9 @@ maps.prototype.removeBlockByIndex = function (index, floorId) {
 
 ////// 一次性删除多个block //////
 maps.prototype.removeBlockByIndexes = function (indexes, floorId) {
+    // 【星冥线】地图变更计数（与 removeBlock 一致）：炸弹等按索引批量删块不走
+    // removeBlock，route 折叠的 mapVer 判定需要覆盖，避免折叠掉有状态影响的动作。
+    core.status.__mapVer__ = (core.status.__mapVer__ || 0) + 1;
     indexes.sort(function (a, b) {
         return b - a;
     }).forEach(function (index) {
@@ -2300,6 +2316,8 @@ maps.prototype.setBlock = function (number, x, y, floorId) {
     floorId = floorId || core.status.floorId;
     if (!floorId || number == null || x == null || y == null) return;
     if (x < 0 || x >= core.floors[floorId].width || y < 0 || y >= core.floors[floorId].height) return;
+    // 【星冥线】地图变更计数（与 removeBlock 一致，供 route 折叠判定使用）
+    core.status.__mapVer__ = (core.status.__mapVer__ || 0) + 1;
     if (typeof number == 'string') {
         if (/^\d+$/.test(number)) number = parseInt(number);
         else number = core.getNumberById(number);
@@ -2347,6 +2365,8 @@ maps.prototype.setBlock = function (number, x, y, floorId) {
 maps.prototype.animateSetBlock = function (number, x, y, floorId, time, callback) {
     floorId = floorId || core.status.floorId;
     time = time || 0;
+    // 【星冥线】地图变更计数（动画设置最终也会 setBlock/removeBlock）
+    core.status.__mapVer__ = (core.status.__mapVer__ || 0) + 1;
     if (floorId != core.status.floorId || time == 0) {
         // 不在当前楼层，直接忽略
         this.setBlock(number, x, y, floorId);

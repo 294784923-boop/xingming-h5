@@ -1,7 +1,7 @@
 var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d = 
 {
 	"main": {
-		"floorIds": ["f0_garden", "f3_0", "f3_1", "f3_2", "f3_3", "f3_4", "f3_5", "f3_6", "f3_7", "f3_8", "f3_9", "f3_10", "f3_11", "f3_12", "f1_0", "f1_1", "f1_2", "f1_3", "f1_4", "f1_5", "f1_6", "f1_7", "f1_8", "f1_9", "f1_10", "f1_11"],
+		"floorIds": ["f0_garden", "f3_0", "f3_1", "f3_2", "f3_3", "f3_4", "f3_5", "f3_6", "f3_7", "f3_8", "f3_9", "f3_10", "f3_11", "f3_12", "f1_0", "f1_1", "f1_2", "f1_3", "f1_4", "f1_5", "f1_6", "f1_7", "f1_8", "f1_9", "f1_10", "f1_11", "danmaku"],
 		"floorPartitions": [],
 		"images": [
 			"bear.png",
@@ -10,6 +10,15 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"hero.png",
 			"winskin.png",
 			"youmu.png",
+			"reimu.png",
+			"marisa.png",
+			"reimubullet.png",
+			"marisabullet.png",
+			// 第四十二章：弹幕弹体素材整合为两张帧表（旧 etama*/enemybullet* 已归档至 images/_legacy_bullets/，不再注册）
+			"bullet_small.png",
+			"bullet_big.png",
+			"spellcards.png",
+			"enemys.png",
 			"pano_f3_0.png",
 
 			"pano_f3_6.png",
@@ -61,6 +70,17 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"title_sakura9.png",
 			"title_sakura10.png",
 			"char_yuyuko.png",
+			"hexagram.png",
+			// 第四十七章：TH07 妖妖梦官方素材 stg6bg 樱花背景（主层=stg6bg 左下深蓝渐变镜像平铺、
+			// 视差层=stg8bg 右上绿云象限镜像平铺、樱花点缀 sakura_petal0..2；
+			// bg_stg8_main.png/bg_stg8_glow.png 已归裆至 images/_legacy_bullets/，不再注册；
+			// bg_stg8.png 保留为绿云象限源，不直接绘制）
+			"bg_stg8.png",
+			"bg_stg6_main.png",
+			"bg_stg8_cloud.png",
+			"sakura_petal0.png",
+			"sakura_petal1.png",
+			"sakura_petal2.png",
 			"char_liyue.png",
 			"char_npc01.png",
 			"char_satsuki.png",
@@ -164,7 +184,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"sword",
 			"zone"
 		],
-		"bgms": ["bgm_garden.mp3", "bgm_tower1.mp3", "bgm_tower3.mp3", "bgm_extra.mp3", "bgm_title.mp3", "bgm_youyoumu.mp3"],
+		"bgms": ["bgm_garden.mp3", "bgm_tower1.mp3", "bgm_tower3.mp3", "bgm_extra.mp3", "bgm_title.mp3", "bgm_youyoumu.mp3", "bgm_yuyuko.mp3"],
 		"sounds": [
 			"attack.mp3",
 			"100-Attack12.mp3",
@@ -207,7 +227,12 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"save.mp3",
 			"shop.mp3",
 			"zone.mp3",
-			"logo1.mp3"
+			"logo1.mp3",
+			"danmaku_shot.wav",
+			"danmaku_graze.wav",
+			"danmaku_damage.wav",
+			"danmaku_cardget.wav",
+			"danmaku_declare.wav"
 		],
 		"fonts": [],
 		"nameMap": {
@@ -234,7 +259,12 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 			"攻击": "attack.mp3",
 			"背景图": "bg.jpg",
 			"商店": "shop.mp3",
-			"领域": "zone"
+			"领域": "zone",
+			"danmaku_shot": "danmaku_shot.wav",
+			"danmaku_graze": "danmaku_graze.wav",
+			"danmaku_damage": "danmaku_damage.wav",
+			"danmaku_cardget": "danmaku_cardget.wav",
+			"danmaku_declare": "danmaku_declare.wav"
 		},
 		"levelChoose": [
 			{
@@ -325,7 +355,7 @@ var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d =
 	"firstData": {
 		"title": "东方星冥线H5测试",
 		"name": "template",
-		"version": "Ver 2.10.29",
+		"version": "Ver 2.10.66",
 		"floorId": "f0_garden",
 		"hero": {
 			"image": "youmu.png",

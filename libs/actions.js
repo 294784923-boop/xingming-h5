@@ -1518,15 +1518,6 @@ actions.prototype._clickToolbox = function (x, y) {
     var tools = core.getToolboxItems('tools'),
         constants = core.getToolboxItems('constants');
 
-    // 装备栏
-    if (x >= this.LAST - 2 && y == 0) {
-        core.ui.closePanel();
-        if (core.isReplaying())
-            core.control._replay_equipbox();
-        else
-            core.openEquipbox();
-        return;
-    }
     if (x >= this.LAST - 2 && y===core._HEIGHT_-1) {
         core.playSound('取消');
         core.ui.closePanel();
@@ -1698,15 +1689,6 @@ actions.prototype._keyDownToolbox = function (keycode) {
 
 ////// 工具栏界面时，放开某个键的操作 //////
 actions.prototype._keyUpToolbox = function (keycode) {
-    if (keycode == 81) {
-        core.playSound('确定');
-        core.ui.closePanel();
-        if (core.isReplaying())
-            core.control._replay_equipbox();
-        else
-            core.openEquipbox();
-        return;
-    }
     if (keycode == 84 || keycode == 27 || keycode == 88) {
         core.playSound('取消');
         core.ui.closePanel();

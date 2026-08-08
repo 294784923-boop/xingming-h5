@@ -2,7 +2,7 @@
 function main() {
     //------------------------ 用户修改内容 ------------------------//
 
-    this.version = '2.10.29'; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
+    this.version = '2.10.66'; // 游戏版本号；如果更改了游戏内容建议修改此version以免造成缓存问题。
 
     this.useCompress = false; // 是否使用压缩文件
     // 当你即将发布你的塔时，请使用“JS代码压缩工具”将所有js代码进行压缩，然后将这里的useCompress改为true。
@@ -136,11 +136,12 @@ function main() {
             book: document.getElementById('img-book'),
             fly: document.getElementById('img-fly'),
             toolbox: document.getElementById('img-toolbox'),
-            keyboard: document.getElementById('img-keyboard'),
             shop: document.getElementById('img-shop'),
             save: document.getElementById('img-save'),
             load: document.getElementById('img-load'),
             settings: document.getElementById('img-settings'),
+            undo: document.getElementById('img-undo'),
+            redo: document.getElementById('img-redo'),
             btn1: document.getElementById('img-btn1'),
             btn2: document.getElementById('img-btn2'),
             btn3: document.getElementById('img-btn3'),
@@ -624,11 +625,15 @@ main.prototype.listen = function () {
     };
 
     ////// 鼠标按下时 //////
+    // 第四十五章：鼠标/触摸共用 core.actions 链路，分发时打标 __danmakuPointerType
+    // （等价于 pointer 事件类型），弹幕战插件据此禁用鼠标拖动、仅保留触摸拖拽
+    // （触屏笔记本的鼠标输入同样不拖）。
     main.dom.data.onmousedown = function (e) {
         try {
             e.stopPropagation();
             var loc = main.core.actions._getClickLoc(e.clientX, e.clientY);
             if (loc == null) return;
+            main.dom.data.__danmakuPointerType = 'mouse';
             main.core.ondown(loc);
         } catch (ee) {
             console.error(ee);
@@ -641,6 +646,7 @@ main.prototype.listen = function () {
             e.stopPropagation();
             var loc = main.core.actions._getClickLoc(e.clientX, e.clientY);
             if (loc == null) return;
+            main.dom.data.__danmakuPointerType = 'mouse';
             main.core.onmove(loc);
         } catch (ee) {
             console.error(ee);
@@ -653,6 +659,7 @@ main.prototype.listen = function () {
             e.stopPropagation();
             var loc = main.core.actions._getClickLoc(e.clientX, e.clientY);
             if (loc == null) return;
+            main.dom.data.__danmakuPointerType = 'mouse';
             main.core.onup(loc);
         } catch (ee) {
             console.error(ee);
@@ -678,6 +685,7 @@ main.prototype.listen = function () {
                 e.targetTouches[0].clientY
             );
             if (loc == null) return;
+            main.dom.data.__danmakuPointerType = 'touch';
             main.lastTouchLoc = loc;
             main.core.ondown(loc);
         } catch (ee) {
@@ -694,6 +702,7 @@ main.prototype.listen = function () {
                 e.targetTouches[0].clientY
             );
             if (loc == null) return;
+            main.dom.data.__danmakuPointerType = 'touch';
             main.lastTouchLoc = loc;
             main.core.onmove(loc);
         } catch (ee) {
@@ -706,6 +715,7 @@ main.prototype.listen = function () {
         try {
             e.preventDefault();
             if (main.lastTouchLoc == null) return;
+            main.dom.data.__danmakuPointerType = 'touch';
             var loc = main.lastTouchLoc;
             delete main.lastTouchLoc;
             main.core.onup(loc);
@@ -766,29 +776,6 @@ main.prototype.listen = function () {
         if (main.core.isPlaying()) {
             main.core.openToolbox(core.status.event.id != 'equipbox');
         }
-    };
-
-    ////// 双击状态栏中的工具箱时 //////
-    main.statusBar.image.toolbox.ondblclick = function (e) {
-        e.stopPropagation();
-
-        if (core.isReplaying()) {
-            return;
-        }
-
-        if (main.core.isPlaying()) main.core.openEquipbox(true);
-    };
-
-    ////// 点击状态栏中的虚拟键盘时 //////
-    main.statusBar.image.keyboard.onclick = function (e) {
-        e.stopPropagation();
-
-        if (core.isReplaying()) {
-            core.control._replay_book();
-            return;
-        }
-
-        if (main.core.isPlaying()) main.core.openKeyBoard(true);
     };
 
     ////// 点击状态栏中的快捷商店时 //////
@@ -858,6 +845,24 @@ main.prototype.listen = function () {
         }
 
         if (main.core.isPlaying()) main.core.openSettings(true);
+    };
+
+    ////// 点击状态栏中的撤回按钮时 //////
+    main.statusBar.image.undo.onclick = function (e) {
+        e.stopPropagation();
+
+        if (core.isReplaying()) return;
+
+        if (main.core.isPlaying()) main.core.doSL("autoSave", "load");
+    };
+
+    ////// 点击状态栏中的反撤回按钮时 //////
+    main.statusBar.image.redo.onclick = function (e) {
+        e.stopPropagation();
+
+        if (core.isReplaying()) return;
+
+        if (main.core.isPlaying()) main.core.doSL("autoSave", "reload");
     };
 
     ////// 点击工具栏时 //////
